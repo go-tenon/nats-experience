@@ -4,15 +4,19 @@
 
 新服务器使用同一个运营者，应用的 `.creds` 不变，只改地址。worker 停止期间，发布照常进行，新任务留在 PostgreSQL 的复制槽中；worker 连上新 NATS 后自动转发。NATS 中已有的任务、定时消息和 consumer 进度通过备份和恢复迁移。任务暂停处理的时长等于 worker 停止的时长。
 
-以下命令在旧服务器的部署目录中执行，`<新地址>` 为新服务器的内网地址。
+以下命令在旧服务器上以管理员用户执行，`<新地址>` 为新服务器的内网地址。
 
 ## 1. 准备新服务器
 
-1. 安装 Docker，复制部署目录中的 `compose.yaml`、`nats.conf`、`resolver.conf`（**不复制 `admin/`**），`nats.conf` 中的 `server_name` 改为新机器名。
-2. `docker compose up -d`。
+1. 按 [01 部署](01-deploy.md) 安装软件、创建用户和目录、安装服务。**不安装 nsc，不创建运营者**。
+2. 从旧服务器复制 `/etc/nats/nats.conf`、`/etc/nats/resolver.conf`，`server_name` 改为新机器名，启动 `nats-server`。
 3. 安全组放行应用服务器和旧服务器访问新服务器的 4222。
-4. 推送账号：`nb nsc push --account PRODUCT_A --account-jwt-server-url nats://<新地址>:4222`
-5. 添加 context：`nb nats context add product_a_new --server nats://<新地址>:4222 --creds /nsc/nkeys/creds/tenon/PRODUCT_A/app.creds`
+4. 推送账号并添加 context：
+
+   ```bash
+   nsc push --account PRODUCT_A --account-jwt-server-url nats://<新地址>:4222
+   nats context add product_a_new --server nats://<新地址>:4222 --creds ~/.local/share/nats/nsc/keys/creds/tenon/PRODUCT_A/app.creds
+   ```
 
 ## 2. 缩短 max_defer（可选，提前一天）
 
@@ -25,34 +29,34 @@
 ## 4. 备份和恢复
 
 ```bash
-nb nats --context product_a backup stream jobs /nsc/backup/jobs --no-progress
-nb nats --context product_a_new backup restore stream /nsc/backup/jobs --no-progress
+nats --context product_a backup stream jobs ~/natsbackup/jobs --no-progress
+nats --context product_a_new backup restore stream ~/natsbackup/jobs --no-progress
 
-nb nats --context product_a stream info jobs | grep -i messages        # 两边消息数相同
-nb nats --context product_a_new stream info jobs | grep -i messages
-nb nats --context product_a_new consumer ls jobs
+nats --context product_a stream info jobs | grep -i messages        # 两边消息数相同
+nats --context product_a_new stream info jobs | grep -i messages
+nats --context product_a_new consumer ls jobs
 ```
 
 ## 5. 切换
 
 1. 应用的 `nats.url` 改为新服务器，`credentials` 不变。
 2. 启动 worker，重启其他使用 NATS 的进程（广播、实时频道）。
-3. 检查：`nb nats --context product_a_new consumer report jobs`、tenon 队列面板。
+3. 检查：`nats --context product_a_new consumer report jobs`、tenon 队列面板。
 
 ## 6. 清理旧服务器
 
 确认正常后立即执行：
 
 ```bash
-nb nats --context product_a stream rm jobs -f
-nb nsc push --account-removal PRODUCT_A        # 只从旧服务器删除账号
-rm -rf admin/backup
-nb nats context rm product_a -f
+nats --context product_a stream rm jobs -f
+nsc push --account-removal PRODUCT_A        # 只从旧服务器删除账号
+rm -rf ~/natsbackup
+nats context rm product_a -f
 ```
 
 旧 stream 中的定时消息到时仍会触发，worker 误连旧服务器会重复处理任务。
 
-此后 `PRODUCT_A` 的推送须指定新服务器：`nb nsc push --account PRODUCT_A --account-jwt-server-url nats://<新地址>:4222`。
+此后 `PRODUCT_A` 的推送须指定新服务器：`nsc push --account PRODUCT_A --account-jwt-server-url nats://<新地址>:4222`。
 
 ## 回退
 

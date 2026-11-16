@@ -1,4 +1,4 @@
-# 复制为 nats.conf。账号和用户由 nsc 管理，见 docs/02-accounts.md。
+# /etc/nats/nats.conf
 server_name: nats-1                 # 热加载时不能修改
 
 # 访问来源由云平台安全组控制
@@ -6,8 +6,12 @@ listen: 0.0.0.0:4222
 # 监控，仅本机
 http: 127.0.0.1:8222
 
+log_file: "/var/log/nats/nats-server.log"
+logfile_size_limit: 100MB
+logfile_max_num: 10
+
 jetstream {
-  store_dir: /data
+  store_dir: /var/lib/nats
   # 每秒同步磁盘，断电最多丢约 1 秒的写入
   sync_interval: "1s"
   # 所有账号合计的磁盘上限

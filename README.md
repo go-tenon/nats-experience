@@ -1,32 +1,19 @@
 # NATS 部署与运维
 
-多产品共用的单机 NATS（JetStream），供 tenon 的队列、广播和实时频道使用。认证用 JWT + NKey（`.creds` 凭据文件），每个产品一个账号；产品流量变大后迁到单独的 NATS。
+多产品共用的单机 NATS（JetStream），供 tenon 的队列、广播和实时频道使用。以 systemd 服务运行；认证用 JWT + NKey（`.creds`），每个产品一个账号；产品流量变大后迁到单独的 NATS。
 
 ## 快速开始
 
+Ubuntu x86_64，以管理员用户执行：
+
 ```bash
-sudo apt-get install -y docker.io docker-compose-v2 && sudo usermod -aG docker $USER   # 重新登录
-git clone git@github.com:go-tenon/nats-experience.git ~/nats && cd ~/nats
-nb() { docker run --rm -i --network host --user "$(id -u):$(id -g)" -v ~/nats/admin:/nsc natsio/nats-box:latest "$@"; }
-
-# 运营者和服务器配置
-mkdir -m 700 admin
-nb nsc add operator --name tenon --generate-signing-key --sys
-nb nsc edit operator --require-signing-keys --account-jwt-server-url nats://127.0.0.1:4222
-nb nsc generate config --nats-resolver --sys-account SYS > resolver.conf
-sed -i "s|dir: './jwt'|dir: '/data/jwt'|; s|allow_delete: false|allow_delete: true|" resolver.conf
-cp nats.conf.example nats.conf            # 修改 server_name
-docker compose up -d
-
-# 产品
-nb nsc add account --name PRODUCT_A
-nb nsc edit account --name PRODUCT_A --sk generate --js-disk-storage -1 --js-mem-storage -1 --js-streams -1 --js-consumer -1
-nb nsc add user --account PRODUCT_A --name app
-nb nsc push --account PRODUCT_A
-# 凭据：admin/nkeys/creds/tenon/PRODUCT_A/app.creds
+curl -fLO https://github.com/nats-io/nats-server/releases/download/v2.15.3/nats-server-v2.15.3-amd64.deb
+curl -fLO https://github.com/nats-io/nsc/releases/download/v2.15.0/nsc-v2.15.0-amd64.deb
+curl -fLO https://github.com/nats-io/natscli/releases/download/v0.5.1/nats-0.5.1-amd64.deb
+sudo apt install -y ./nats-server-v2.15.3-amd64.deb ./nsc-v2.15.0-amd64.deb ./nats-0.5.1-amd64.deb
 ```
 
-云平台安全组放行应用服务器访问 4222；开启磁盘自动快照；备份 `admin/`。
+其余步骤见 [01 部署](docs/01-deploy.md)：创建用户和目录、运营者、配置、systemd 服务、添加产品。
 
 应用配置：
 
@@ -40,14 +27,14 @@ queue:
 
 ## 文件
 
-| 文件 | 作用 |
-|---|---|
-| `compose.yaml` | NATS；`observe` profile 为 OpenObserve 采集组件 |
-| `nats.conf.example` | NATS 配置模板 |
-| `otelcol.yaml` | OpenTelemetry Collector 配置 |
-| `.env.example` | OpenObserve 地址和认证 |
+按服务器上的路径存放：
 
-部署时产生的 `admin/`（签名私钥、凭据）、`resolver.conf`、`nats.conf`、`.env` 不提交。
+| 文件 | 目标 |
+|---|---|
+| `etc/nats/nats.conf.example` | `/etc/nats/nats.conf` |
+| `etc/systemd/system/nats-server.service` | `/etc/systemd/system/` |
+| `etc/systemd/system/prometheus-nats-exporter.service` | `/etc/systemd/system/`（接入 OpenObserve 时） |
+| `etc/otelcol-contrib/config.yaml.example` | `/etc/otelcol-contrib/config.yaml`（接入 OpenObserve 时） |
 
 ## 文档
 

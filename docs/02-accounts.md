@@ -1,6 +1,6 @@
 # 02 账号
 
-每个产品一个账号，账号下的用户持有 `.creds` 连接。命令在部署目录中通过 `nb` 执行（见 [01 部署](01-deploy.md#安装)）。
+每个产品一个账号，账号下的用户持有 `.creds` 连接。命令以管理员用户执行。
 
 | 方面 | 隔离 |
 |---|---|
@@ -14,51 +14,44 @@
 
 ```bash
 A=PRODUCT_C
-nb nsc add account --name $A
-nb nsc edit account --name $A --sk generate --js-disk-storage -1 --js-mem-storage -1 --js-streams -1 --js-consumer -1
-nb nsc add user --account $A --name app
-nb nsc push --account $A
+nsc add account --name $A
+nsc edit account --name $A --sk generate --js-disk-storage -1 --js-mem-storage -1 --js-streams -1 --js-consumer -1
+nsc add user --account $A --name app
+nsc push --account $A
+nats context add product_c --server nats://127.0.0.1:4222 --creds ~/.local/share/nats/nsc/keys/creds/tenon/$A/app.creds
+nats --context product_c account info
 ```
 
 - `--js-*` 开启 JetStream 且不限额。不设置时账号的 JetStream 是关闭的。
 - `--sk generate` 生成账号签名密钥，用户由它签发。
-- 凭据：`admin/nkeys/creds/tenon/$A/app.creds`，复制到应用服务器（权限 600），配置为 `nats.credentials`。
-
-为运维添加 context：
-
-```bash
-nb nats context add product_c --server nats://127.0.0.1:4222 --creds /nsc/nkeys/creds/tenon/$A/app.creds
-nb nats --context product_c account info
-```
+- 凭据 `~/.local/share/nats/nsc/keys/creds/tenon/$A/app.creds` 复制到应用服务器（权限 600），配置为 `nats.credentials`。
 
 ## 多个用户
 
 一个产品的多个应用或环境各用一个用户，便于单独吊销：
 
 ```bash
-nb nsc add user --account PRODUCT_A --name worker
-nb nsc push --account PRODUCT_A
+nsc add user --account PRODUCT_A --name worker
+nsc push --account PRODUCT_A
 ```
 
 ## 吊销和重新签发
 
-凭据泄露或人员变动时：
-
 ```bash
-nb nsc add user --account PRODUCT_A --name app2                  # 新凭据，更新到应用
-nb nsc revocations add-user --account PRODUCT_A --name app       # 吊销旧凭据
-nb nsc push --account PRODUCT_A
+nsc add user --account PRODUCT_A --name app2                  # 新凭据，更新到应用
+nsc revocations add-user --account PRODUCT_A --name app       # 吊销旧凭据
+nsc push --account PRODUCT_A
 ```
 
-推送后旧凭据立即无法连接。撤销吊销：`nb nsc revocations delete-user --account PRODUCT_A --name app`，再推送。
+推送后旧凭据立即无法连接。撤销吊销：`nsc revocations delete-user --account PRODUCT_A --name app`，再推送。
 
 ## 删除产品
 
 ```bash
-nb nats --context product_c stream rm jobs -f
-nb nsc push --account-removal PRODUCT_C                          # 从服务器删除
-nb nsc delete account --name PRODUCT_C --rm-nkey --rm-creds      # 从本地删除
-nb nats context rm product_c -f
+nats --context product_c stream rm jobs -f
+nsc push --account-removal PRODUCT_C                          # 从服务器删除
+nsc delete account --name PRODUCT_C --rm-nkey --rm-creds      # 从本地删除
+nats context rm product_c -f
 ```
 
 服务器上的账号 JWT 改名为 `.deleted`，可以恢复。
@@ -66,9 +59,9 @@ nb nats context rm product_c -f
 ## 查看
 
 ```bash
-nb nsc list accounts
-nb nsc describe account --name PRODUCT_A
-nb nsc list users --account PRODUCT_A
+nsc list accounts
+nsc describe account --name PRODUCT_A
+nsc list users --account PRODUCT_A
 curl -s '127.0.0.1:8222/jsz?accounts=true' | python3 -c 'import json,sys; [print(a["name"], "storage", a.get("storage"), "memory", a.get("memory")) for a in json.load(sys.stdin).get("account_details",[])]'
 ```
 
