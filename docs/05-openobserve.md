@@ -28,23 +28,23 @@ docker compose logs otelcol | grep -iE 'error|Everything is ready'
 
 | 指标 | 标签 | 含义 |
 |---|---|---|
-| `jetstream_consumer_num_pending` | `account`、`stream_name`、`consumer_name` | topic 的积压 |
+| `jetstream_consumer_num_pending` | `account_name`、`stream_name`、`consumer_name` | topic 的积压 |
 | `jetstream_consumer_num_ack_pending` | 同上 | 处理中的任务 |
 | `jetstream_consumer_num_redelivered` | 同上 | 重新投递的任务 |
 | `jetstream_consumer_num_waiting` | 同上 | worker 的拉取请求；积压大于 0 且为 0 时没有 worker 在处理 |
-| `jetstream_account_storage_used` | `account` | 账号的磁盘用量 |
-| `jetstream_account_max_storage` | `account` | 账号的磁盘配额 |
-| `jetstream_server_total_message_bytes` | | 全部 stream 的数据量 |
+| `jetstream_account_storage_used` | `account_name` | 账号的磁盘用量 |
+| `jetstream_server_total_message_bytes` | | 全部账号的数据量 |
+| `jetstream_server_max_storage` | | 磁盘上限（`max_file_store`） |
 | `gnatsd_varz_connections` | | 连接数 |
 | `gnatsd_varz_mem`、`gnatsd_varz_cpu` | | NATS 进程的内存和 CPU |
-| `gnatsd_accstatz_current_connections` | `account` | 账号的连接数 |
+| `gnatsd_accstatz_current_connections` | `account_name` | 账号的连接数 |
 | `gnatsd_healthz_status_value` | | 健康状态，0 为正常 |
 
-`consumer_name` 是 tenon 的 topic 把 `.` 换成 `_`。
+`account_name` 是账号名（`account`、`account_id` 中可能是公钥）；`consumer_name` 是 tenon 的 topic 把 `.` 换成 `_`。
 
 ## 告警建议
 
 - `jetstream_consumer_num_pending` 持续增长；
-- `jetstream_account_storage_used` 超过 `jetstream_account_max_storage` 的 80%；
+- `jetstream_server_total_message_bytes` 超过 `jetstream_server_max_storage` 的 80%；
 - `gnatsd_healthz_status_value` 不为 0，或指标停止上报；
 - 日志中出现 `[ERR]`。

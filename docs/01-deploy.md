@@ -25,35 +25,64 @@
 - 任务丢失后无法从业务数据补回；
 - 不允许任务暂停处理。
 
+## 认证
+
+JWT + NKey：
+
+- **运营者**（`tenon`）签发账号，服务器只信任运营者。
+- **账号**对应产品，subject 和 stream 相互隔离。
+- **用户**属于账号，持有 `.creds` 凭据文件（JWT + 私钥）连接，私钥不在网络上传输。
+
+账号和用户用 `nsc` 管理，推送到服务器后生效，不修改服务器配置、不重启。`nsc` 通过 nats-box 容器运行，数据（签名私钥、账号、凭据、context）在部署目录的 `admin/` 中。
+
 ## 安装
 
 ```bash
 sudo apt-get install -y docker.io docker-compose-v2
 sudo usermod -aG docker $USER            # 重新登录生效
 git clone git@github.com:go-tenon/nats-experience.git ~/nats && cd ~/nats
-cp nats.conf.example nats.conf && chmod 600 nats.conf
 ```
 
-编辑 `nats.conf`：
-
-- `server_name` 改为机器名，之后不能热加载修改；
-- 按 [02 账号](02-accounts.md) 为每个产品和 `sys` 生成密码哈希，替换 `<bcrypt 哈希>`。
-
-启动并检查：
+定义 `nb`（后续所有 `nsc`、`nats` 命令都通过它执行，可写入 `~/.bashrc`）：
 
 ```bash
-docker compose up -d
-curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'
-sudo ss -ltnp | grep -E '4222|8222'      # 4222 在 0.0.0.0，8222 在 127.0.0.1
+nb() { docker run --rm -i --network host --user "$(id -u):$(id -g)" -v ~/nats/admin:/nsc natsio/nats-box:latest "$@"; }
 ```
 
-`compose.yaml` 中的设置：host 网络、自动重启、数据卷 `nats-data`、日志轮转、`GOMEMLIMIT=1200MiB`。内存不是 2G 时在 `.env` 中设置 `NATS_GOMEMLIMIT`，取内存的 60–80%。
+创建运营者和系统账号：
+
+```bash
+mkdir -m 700 admin
+nb nsc add operator --name tenon --generate-signing-key --sys
+nb nsc edit operator --require-signing-keys --account-jwt-server-url nats://127.0.0.1:4222
+```
+
+生成服务器的 resolver 配置：
+
+```bash
+nb nsc generate config --nats-resolver --sys-account SYS > resolver.conf
+sed -i "s|dir: './jwt'|dir: '/data/jwt'|; s|allow_delete: false|allow_delete: true|" resolver.conf
+```
+
+`resolver.conf` 包含运营者 JWT、系统账号和 resolver 设置；账号 JWT 存于数据卷的 `/data/jwt`。
+
+配置并启动：
+
+```bash
+cp nats.conf.example nats.conf            # server_name 改为机器名，之后不能热加载修改
+docker compose up -d
+curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'
+docker compose logs nats | grep -A1 'Trusted Operators'   # Operator: "tenon"
+```
+
+按 [02 账号](02-accounts.md) 添加产品。
+
+**备份 `admin/`**：其中的签名私钥丢失后无法再签发账号和用户，泄露后他人可签发凭据。备份到离线或加密存储，权限保持 700。
 
 ## 访问控制
 
 - 4222 监听 `0.0.0.0`，在云平台安全组中按 IP 或网段放行应用服务器。
 - 同一 VPC 的应用用内网地址连接；其他应用用公网地址，安全组只放行其 IP。
-- 公网连接时用户名和密码明文传输。
 - 8222（监控）只监听 127.0.0.1，不对外开放。
 
 ## 配置
@@ -68,18 +97,21 @@ jetstream {
   max_file_store: 30GB
   max_memory_store: 256MB
 }
+
+include resolver.conf
 ```
 
 - `sync_interval: "1s"`：每秒同步磁盘，吞吐下降 5–10%。默认 2 分钟；`always` 在普通云盘上约 450 条/秒，不用。
-- `max_file_store`：磁盘上限。各账号 `max_file` 之和不超过它。
+- `max_file_store`：所有账号合计的磁盘上限。账号不设配额，积压用满时所有产品都无法写入。
 - `max_memory_store`：实时频道的在线成员使用内存存储。
-- `listen`、`jetstream` 的改动执行 `docker compose restart nats`；账号、用户、配额的改动热加载，见 [03 运维](03-operations.md#修改配置)。
+- `listen`、`jetstream` 的改动执行 `docker compose restart nats`。
 
 ## 应用配置
 
 ```yaml
 nats:
-  url: ${NATS_URL}   # nats://product_a:<密码>@<NATS 地址>:4222，密码用环境变量传入
+  url: nats://<NATS 地址>:4222
+  credentials: /etc/app/nats.creds   # 产品用户的 .creds，权限 600
 queue:
   stream: jobs       # 默认值
   replicas: 1

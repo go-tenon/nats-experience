@@ -1,4 +1,4 @@
-# 复制为 nats.conf（chmod 600），<...> 替换为实际值。哈希的生成见 docs/02-accounts.md。
+# 复制为 nats.conf。账号和用户由 nsc 管理，见 docs/02-accounts.md。
 server_name: nats-1                 # 热加载时不能修改
 
 # 访问来源由云平台安全组控制
@@ -10,24 +10,10 @@ jetstream {
   store_dir: /data
   # 每秒同步磁盘，断电最多丢约 1 秒的写入
   sync_interval: "1s"
-  # 各账号 max_file 之和不超过此值
+  # 所有账号合计的磁盘上限
   max_file_store: 30GB
   max_memory_store: 256MB
 }
 
-# 每个产品一个账号。修改后：docker compose kill -s HUP nats
-accounts {
-  PRODUCT_A: {
-    jetstream: { max_file: 5GB, max_mem: 64MB, max_streams: 20, max_consumers: 200 }
-    users: [ { user: product_a, password: "<bcrypt 哈希>" } ]
-  }
-  PRODUCT_B: {
-    jetstream: { max_file: 5GB, max_mem: 64MB, max_streams: 20, max_consumers: 200 }
-    users: [ { user: product_b, password: "<bcrypt 哈希>" } ]
-  }
-  # 运维账号，不给应用用
-  SYS: {
-    users: [ { user: sys, password: "<bcrypt 哈希>" } ]
-  }
-}
-system_account: SYS
+# 运营者、系统账号和账号 resolver，由 nsc generate config 生成，见 docs/01-deploy.md
+include resolver.conf

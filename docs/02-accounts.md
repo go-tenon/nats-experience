@@ -1,64 +1,75 @@
 # 02 账号
 
-每个产品一个账号。
+每个产品一个账号，账号下的用户持有 `.creds` 连接。命令在部署目录中通过 `nb` 执行（见 [01 部署](01-deploy.md#安装)）。
 
 | 方面 | 隔离 |
 |---|---|
 | subject、stream | 隔离。各账号都可用 stream 名 `jobs` |
-| JetStream 资源 | 隔离，按账号限额，超额写入被拒绝 |
 | 凭据 | 隔离 |
-| CPU、磁盘 IO | **不隔离**。某个产品影响其他产品时，按 [04 迁移](04-migration.md) 迁出 |
+| 磁盘、CPU、IO | **不隔离**。账号不设配额，共用 `max_file_store`。某个产品影响其他产品时，按 [04 迁移](04-migration.md) 迁出 |
 
-同一产品的测试和正式环境用两个账号，例如 `product_a`、`product_a_test`。
-
-## 生成密码和哈希
-
-```bash
-PASSWORD=$(openssl rand -base64 60 | tr -dc 'A-Za-z0-9' | head -c 40); echo "$PASSWORD"   # 存入密码管理器
-PASSWORD="$PASSWORD" docker run --rm -e PASSWORD natsio/nats-box:latest nats server passwd    # 输出哈希
-```
-
-`nats.conf` 中只写哈希。明文交给应用（`NATS_URL`），不保存在服务器上。
+同一产品的测试和正式环境用两个账号，例如 `PRODUCT_A`、`PRODUCT_A_TEST`。
 
 ## 新增产品
 
-在 `nats.conf` 的 `accounts` 中加入：
-
+```bash
+A=PRODUCT_C
+nb nsc add account --name $A
+nb nsc edit account --name $A --sk generate --js-disk-storage -1 --js-mem-storage -1 --js-streams -1 --js-consumer -1
+nb nsc add user --account $A --name app
+nb nsc push --account $A
 ```
-  PRODUCT_C: {
-    jetstream: { max_file: 5GB, max_mem: 64MB, max_streams: 20, max_consumers: 200 }
-    users: [ { user: product_c, password: "<bcrypt 哈希>" } ]
-  }
-```
 
-热加载：
+- `--js-*` 开启 JetStream 且不限额。不设置时账号的 JetStream 是关闭的。
+- `--sk generate` 生成账号签名密钥，用户由它签发。
+- 凭据：`admin/nkeys/creds/tenon/$A/app.creds`，复制到应用服务器（权限 600），配置为 `nats.credentials`。
+
+为运维添加 context：
 
 ```bash
-docker compose kill -s HUP nats
-docker compose logs --since 1m nats | grep -i reload    # 出现 Reloaded server configuration
+nb nats context add product_c --server nats://127.0.0.1:4222 --creds /nsc/nkeys/creds/tenon/$A/app.creds
+nb nats --context product_c account info
 ```
 
-## 修改配额
+## 多个用户
 
-修改账号的 `jetstream: { max_file, max_mem }`，热加载。
+一个产品的多个应用或环境各用一个用户，便于单独吊销：
 
-- 各账号 `max_file` 之和不超过 `max_file_store`。
-- 使用实时频道的产品，`max_mem` 要留出在线成员的空间。
+```bash
+nb nsc add user --account PRODUCT_A --name worker
+nb nsc push --account PRODUCT_A
+```
+
+## 吊销和重新签发
+
+凭据泄露或人员变动时：
+
+```bash
+nb nsc add user --account PRODUCT_A --name app2                  # 新凭据，更新到应用
+nb nsc revocations add-user --account PRODUCT_A --name app       # 吊销旧凭据
+nb nsc push --account PRODUCT_A
+```
+
+推送后旧凭据立即无法连接。撤销吊销：`nb nsc revocations delete-user --account PRODUCT_A --name app`，再推送。
 
 ## 删除产品
 
 ```bash
-nb product_c stream rm jobs -f        # nb 见 03 运维
+nb nats --context product_c stream rm jobs -f
+nb nsc push --account-removal PRODUCT_C                          # 从服务器删除
+nb nsc delete account --name PRODUCT_C --rm-nkey --rm-creds      # 从本地删除
+nb nats context rm product_c -f
 ```
 
-从 `nats.conf` 中删除该账号，热加载。
+服务器上的账号 JWT 改名为 `.deleted`，可以恢复。
 
-## 用量
+## 查看
 
 ```bash
+nb nsc list accounts
+nb nsc describe account --name PRODUCT_A
+nb nsc list users --account PRODUCT_A
 curl -s '127.0.0.1:8222/jsz?accounts=true' | python3 -c 'import json,sys; [print(a["name"], "storage", a.get("storage"), "memory", a.get("memory")) for a in json.load(sys.stdin).get("account_details",[])]'
 ```
 
-接入 OpenObserve 后看 `jetstream_account_storage_used`，见 [05](05-openobserve.md)。
-
-账号超过十几个时改用 JWT 模式（`nsc` 管理）。
+`/jsz` 中的账号名是公钥，对应关系见 `nsc list accounts`。

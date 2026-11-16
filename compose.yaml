@@ -17,6 +17,7 @@ services:
       GOMEMLIMIT: ${NATS_GOMEMLIMIT:-1200MiB}   # 内存的 60–80%
     volumes:
       - ./nats.conf:/etc/nats/nats.conf:ro
+      - ./resolver.conf:/etc/nats/resolver.conf:ro
       - nats-data:/data
     logging: *logging
 

@@ -1,3 +1,7 @@
-# 含密码哈希和认证信息，不提交
+# 运营者和账号的签名私钥、用户凭据
+admin/
+*.creds
+# 部署时生成或填写
 nats.conf
+resolver.conf
 .env
