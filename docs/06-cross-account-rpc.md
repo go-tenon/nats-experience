@@ -23,7 +23,7 @@ out, err := natsrpc.Call[ArticleDTO](ctx, nc, "producta.v1.articles.get", in, na
 
 - 未导出的 subject，调用时返回 `natsrpc.ErrNoResponders`。
 - 取消：`nsc delete import --account PRODUCT_B --subject "producta.v1.>"`，推送。
-- 导出和导入只在同一台 NATS（或同一集群）内有效。
+- 导出和导入只在同一台 NATS 内有效。
 
 ## 不同的 NATS：调用方直连 A
 
@@ -52,4 +52,4 @@ out, err := natsrpc.Call[ArticleDTO](ctx, nca, "producta.v1.articles.get", in, n
 
 该用户只能调用 `producta.v1.*`；A 的其他 subject、默认 `_INBOX` 前缀、订阅 `_INBOX.>`、A 的 JetStream 均被拒绝。
 
-删除该用户前先吊销，见 [02 账号](02-accounts.md#吊销和重新签发)。
+删除该用户前先吊销，见 [02 账号](02-accounts.md#用户)。
