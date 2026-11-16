@@ -43,3 +43,4 @@ queue:
 - [03 运维](docs/03-operations.md)
 - [04 迁移](docs/04-migration.md)
 - [05 接入 OpenObserve](docs/05-openobserve.md)
+- [06 跨账号 RPC](docs/06-cross-account-rpc.md)

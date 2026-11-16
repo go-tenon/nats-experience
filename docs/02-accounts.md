@@ -45,6 +45,14 @@ nsc push --account PRODUCT_A
 
 推送后旧凭据立即无法连接。撤销吊销：`nsc revocations delete-user --account PRODUCT_A --name app`，再推送。
 
+**删除用户不会使其凭据失效**，服务器只校验签名。删除用户前先吊销：
+
+```bash
+nsc revocations add-user --account PRODUCT_A --name app
+nsc push --account PRODUCT_A
+nsc delete user --account PRODUCT_A --name app
+```
+
 ## 删除产品
 
 ```bash
