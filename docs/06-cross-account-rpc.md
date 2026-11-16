@@ -1,51 +1,33 @@
 # 06 跨账号 RPC
 
-产品 B 调用产品 A 的 natsrpc 端点。以 A 的前缀 `producta.v1` 为例。
+产品 B、C 调用产品 A 的 natsrpc 端点。以 A 的前缀 `producta.v1` 为例。
 
-两层控制：
-
-- NATS 账号的导出、导入决定请求能否送到 A；
-- natsrpc 的 token 和端点权限决定能否调用。B 仍需 A 签发的 API token（`natsrpc.Token`）。
+NATS 的导出、导入决定请求能否送到 A；natsrpc 的 token 和端点权限决定能否调用，调用方仍需 A 签发的 API token（`natsrpc.Token`）。
 
 ## 同一台 NATS：导出和导入
 
-A 私有导出，为 B 签发授权；B 导入：
+A 导出一次，每个调用方导入：
 
 ```bash
-nsc add export --account PRODUCT_A --service --private --subject "producta.v1.>" --name producta-rpc
-nsc generate activation --account PRODUCT_A --subject "producta.v1.>" --target-account PRODUCT_B --output-file b.tok   # 可加 --expiry
-nsc add import --account PRODUCT_B --service --token b.tok --name producta-rpc
-nsc push --account PRODUCT_A && nsc push --account PRODUCT_B
-rm b.tok
+nsc add export --account PRODUCT_A --service --subject "producta.v1.>" --name producta-rpc
+nsc add import --account PRODUCT_B --service --src-account PRODUCT_A --remote-subject "producta.v1.>" --name producta-rpc
+nsc add import --account PRODUCT_C --service --src-account PRODUCT_A --remote-subject "producta.v1.>" --name producta-rpc
+nsc push --all
 ```
 
-B 用自己的连接调用，代码不变：
+调用方用自己的连接调用，代码不变：
 
 ```go
 out, err := natsrpc.Call[ArticleDTO](ctx, nc, "producta.v1.articles.get", in, natsrpc.Token(token))
 ```
 
-- 只导出需要的前缀。未导出的 subject，B 调用时返回 `natsrpc.ErrNoResponders`。
-- 取消：`nsc delete import --account PRODUCT_B --subject "producta.v1.>"`，必要时删除 A 的导出，推送两个账号。
+- 未导出的 subject，调用时返回 `natsrpc.ErrNoResponders`。
+- 取消：`nsc delete import --account PRODUCT_B --subject "producta.v1.>"`，推送。
 - 导出和导入只在同一台 NATS（或同一集群）内有效。
 
-## 多个调用方
+## 不同的 NATS：调用方直连 A
 
-A 导出一次，为每个调用方各签发一份授权。授权的 subject 可以比导出窄：
-
-```bash
-nsc generate activation --account PRODUCT_A --subject "producta.v1.>" --target-account PRODUCT_B --output-file b.tok
-nsc generate activation --account PRODUCT_A --subject "producta.v1.articles.>" --target-account PRODUCT_C --output-file c.tok
-nsc add import --account PRODUCT_B --service --token b.tok --name producta-rpc
-nsc add import --account PRODUCT_C --service --token c.tok --name producta-rpc
-nsc push --all
-```
-
-B 可调用 `producta.v1.*`，C 只能调用 `producta.v1.articles.*`。取消一方的导入不影响另一方。
-
-## 不同的 NATS：B 直连 A
-
-A 迁到单独的 NATS 后，导入失效。在 A 的账号下为 B 建专用用户，B 的应用另建一条连接：
+A 迁到单独的 NATS 后，导入失效。在 A 的账号下为每个调用方建一个用户，调用方另建一条连接：
 
 ```bash
 nsc add user --account PRODUCT_A --name rpc-productb \
@@ -54,11 +36,9 @@ nsc push --account PRODUCT_A --account-jwt-server-url nats://<A 的地址>:4222
 # 凭据：~/.local/share/nats/nsc/keys/creds/tenon/PRODUCT_A/rpc-productb.creds
 ```
 
-收件箱前缀必须专用。允许订阅 `_INBOX.>` 时，该用户能收到 A 账号内其他请求的回复，包括 A 的 JetStream API 回复。
+每个调用方的收件箱前缀专用且各不相同（C 用 `rpc-productc` 和 `_INBOX_productc`）。允许订阅 `_INBOX.>` 或共用前缀时，调用方能收到 A 账号内其他请求的回复。
 
-多个调用方各建一个用户，收件箱前缀各不相同，例如 C 用 `rpc-productc` 和 `_INBOX_productc`。前缀相同时调用方能收到彼此的回复。
-
-B 的应用：
+调用方的应用：
 
 ```go
 nca, err := nats.Connect("nats://<A 的地址>:4222",
@@ -70,24 +50,6 @@ out, err := natsrpc.Call[ArticleDTO](ctx, nca, "producta.v1.articles.get", in, n
 
 `natsx.Connect` 不能设置收件箱前缀，这条连接直接用 nats.go 建立。
 
-该用户的权限：
+该用户只能调用 `producta.v1.*`；A 的其他 subject、默认 `_INBOX` 前缀、订阅 `_INBOX.>`、A 的 JetStream 均被拒绝。
 
-| 操作 | 结果 |
-|---|---|
-| 调用 `producta.v1.*` | 允许 |
-| 调用 A 的其他 subject | 拒绝 |
-| 默认 `_INBOX` 前缀的请求 | 拒绝（收不到回复） |
-| 订阅 `_INBOX.>` | 拒绝 |
-| 访问 A 的 JetStream | 拒绝 |
-
-## 撤销
-
-**删除用户不会使其凭据失效**，服务器只校验签名。先吊销再删除：
-
-```bash
-nsc revocations add-user --account PRODUCT_A --name rpc-productb
-nsc push --account PRODUCT_A
-nsc delete user --account PRODUCT_A --name rpc-productb
-```
-
-已经删除的用户按公钥吊销：`nsc revocations add-user --account PRODUCT_A --user-public-key <U...>`。公钥在凭据文件的 JWT 中（`sub` 字段）。
+删除该用户前先吊销，见 [02 账号](02-accounts.md#吊销和重新签发)。
