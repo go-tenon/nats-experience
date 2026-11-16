@@ -29,6 +29,20 @@ out, err := natsrpc.Call[ArticleDTO](ctx, nc, "producta.v1.articles.get", in, na
 - 取消：`nsc delete import --account PRODUCT_B --subject "producta.v1.>"`，必要时删除 A 的导出，推送两个账号。
 - 导出和导入只在同一台 NATS（或同一集群）内有效。
 
+## 多个调用方
+
+A 导出一次，为每个调用方各签发一份授权。授权的 subject 可以比导出窄：
+
+```bash
+nsc generate activation --account PRODUCT_A --subject "producta.v1.>" --target-account PRODUCT_B --output-file b.tok
+nsc generate activation --account PRODUCT_A --subject "producta.v1.articles.>" --target-account PRODUCT_C --output-file c.tok
+nsc add import --account PRODUCT_B --service --token b.tok --name producta-rpc
+nsc add import --account PRODUCT_C --service --token c.tok --name producta-rpc
+nsc push --all
+```
+
+B 可调用 `producta.v1.*`，C 只能调用 `producta.v1.articles.*`。取消一方的导入不影响另一方。
+
 ## 不同的 NATS：B 直连 A
 
 A 迁到单独的 NATS 后，导入失效。在 A 的账号下为 B 建专用用户，B 的应用另建一条连接：
@@ -41,6 +55,8 @@ nsc push --account PRODUCT_A --account-jwt-server-url nats://<A 的地址>:4222
 ```
 
 收件箱前缀必须专用。允许订阅 `_INBOX.>` 时，该用户能收到 A 账号内其他请求的回复，包括 A 的 JetStream API 回复。
+
+多个调用方各建一个用户，收件箱前缀各不相同，例如 C 用 `rpc-productc` 和 `_INBOX_productc`。前缀相同时调用方能收到彼此的回复。
 
 B 的应用：
 
