@@ -1,0 +1,144 @@
+== soak sys=nsq 10k/s 10min
+WIN t= 10s pub=  9994/s recv=  9994/s lag=0 pubErr=0 p50=1.45ms p99=29.87ms p999=36.64ms max=40.09ms
+WIN t= 20s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=1.47ms p99=37.76ms p999=47.84ms max=52.90ms
+WIN t= 30s pub=  9977/s recv=  9977/s lag=4 pubErr=0 p50=1.37ms p99=26.96ms p999=37.41ms max=43.42ms
+WIN t= 40s pub= 10023/s recv= 10023/s lag=0 pubErr=0 p50=1.45ms p99=33.60ms p999=47.20ms max=54.30ms
+WIN t= 50s pub=  9999/s recv=  9999/s lag=2 pubErr=0 p50=1.46ms p99=36.77ms p999=61.73ms max=66.94ms
+WIN t= 60s pub= 10018/s recv= 10002/s lag=166 pubErr=0 p50=1.47ms p99=32.45ms p999=53.95ms max=58.78ms
+WIN t= 70s pub=  9983/s recv= 10000/s lag=0 pubErr=0 p50=1.45ms p99=35.01ms p999=68.80ms max=77.95ms
+WIN t= 80s pub= 10019/s recv=  9999/s lag=201 pubErr=0 p50=1.51ms p99=36.22ms p999=47.84ms max=56.41ms
+WIN t= 90s pub=  9981/s recv= 10001/s lag=1 pubErr=0 p50=1.31ms p99=23.76ms p999=38.62ms max=45.92ms
+WIN t=100s pub=  9991/s recv=  9991/s lag=1 pubErr=0 p50=1.51ms p99=37.60ms p999=47.26ms max=55.81ms
+WIN t=110s pub= 10008/s recv= 10008/s lag=0 pubErr=0 p50=1.48ms p99=32.90ms p999=51.17ms max=59.20ms
+WIN t=120s pub= 10004/s recv= 10000/s lag=40 pubErr=0 p50=1.45ms p99=35.20ms p999=67.39ms max=77.89ms
+WIN t=130s pub= 10016/s recv=  9999/s lag=207 pubErr=0 p50=1.47ms p99=33.44ms p999=48.29ms max=58.69ms
+WIN t=140s pub=  9980/s recv= 10001/s lag=1 pubErr=0 p50=1.33ms p99=28.35ms p999=44.32ms max=47.45ms
+WIN t=150s pub=  9984/s recv=  9984/s lag=5 pubErr=0 p50=1.49ms p99=38.24ms p999=50.88ms max=58.72ms
+WIN t=160s pub= 10016/s recv= 10016/s lag=1 pubErr=0 p50=1.54ms p99=40.35ms p999=61.57ms max=64.83ms
+WIN t=170s pub= 10017/s recv= 10000/s lag=174 pubErr=0 p50=1.45ms p99=35.26ms p999=73.66ms max=82.94ms
+WIN t=180s pub=  9983/s recv= 10000/s lag=0 pubErr=0 p50=1.46ms p99=33.05ms p999=48.41ms max=57.28ms
+WIN t=190s pub= 10010/s recv= 10000/s lag=101 pubErr=0 p50=1.47ms p99=35.55ms p999=68.16ms max=81.66ms
+WIN t=200s pub=  9990/s recv=  9976/s lag=239 pubErr=0 p50=1.47ms p99=33.63ms p999=45.38ms max=54.53ms
+WIN t=210s pub= 10018/s recv= 10029/s lag=133 pubErr=0 p50=1.50ms p99=40.73ms p999=54.34ms max=59.71ms
+WIN t=220s pub=  9980/s recv=  9993/s lag=2 pubErr=0 p50=1.44ms p99=31.93ms p999=43.62ms max=48.29ms
+WIN t=230s pub= 10002/s recv= 10002/s lag=0 pubErr=0 p50=1.44ms p99=32.59ms p999=50.88ms max=55.55ms
+WIN t=240s pub= 10005/s recv= 10000/s lag=52 pubErr=0 p50=1.55ms p99=41.76ms p999=77.38ms max=87.42ms
+WIN t=250s pub=  9995/s recv= 10000/s lag=1 pubErr=0 p50=1.38ms p99=30.30ms p999=39.39ms max=44.58ms
+WIN t=260s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=1.47ms p99=35.62ms p999=61.44ms max=79.36ms
+WIN t=270s pub=  9992/s recv=  9991/s lag=11 pubErr=0 p50=1.47ms p99=34.62ms p999=50.72ms max=59.74ms
+WIN t=280s pub= 10027/s recv= 10009/s lag=191 pubErr=0 p50=1.50ms p99=39.39ms p999=57.73ms max=60.86ms
+WIN t=290s pub=  9988/s recv= 10000/s lag=69 pubErr=0 p50=1.37ms p99=31.04ms p999=70.33ms max=80.96ms
+WIN t=300s pub= 10013/s recv= 10000/s lag=197 pubErr=0 p50=1.46ms p99=33.63ms p999=52.03ms max=59.77ms
+WIN t=310s pub=  9980/s recv=  9999/s lag=0 pubErr=0 p50=1.41ms p99=32.46ms p999=45.09ms max=51.36ms
+WIN t=320s pub=  9992/s recv=  9984/s lag=79 pubErr=0 p50=1.46ms p99=35.39ms p999=57.15ms max=65.86ms
+WIN t=330s pub= 10009/s recv= 10017/s lag=0 pubErr=0 p50=1.64ms p99=48.26ms p999=61.85ms max=68.03ms
+WIN t=340s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=1.39ms p99=40.51ms p999=95.81ms max=105.60ms
+WIN t=350s pub= 10019/s recv= 10000/s lag=198 pubErr=0 p50=1.53ms p99=40.86ms p999=54.37ms max=63.36ms
+WIN t=360s pub=  9980/s recv= 10000/s lag=0 pubErr=0 p50=1.53ms p99=43.84ms p999=86.85ms max=98.17ms
+WIN t=370s pub= 10000/s recv=  9976/s lag=244 pubErr=0 p50=1.42ms p99=32.13ms p999=47.77ms max=56.70ms
+WIN t=380s pub= 10000/s recv= 10024/s lag=0 pubErr=0 p50=1.46ms p99=37.92ms p999=56.41ms max=60.35ms
+WIN t=390s pub=  9998/s recv=  9998/s lag=1 pubErr=0 p50=1.48ms p99=37.28ms p999=68.16ms max=76.93ms
+WIN t=400s pub= 10002/s recv= 10002/s lag=0 pubErr=0 p50=1.51ms p99=39.97ms p999=59.23ms max=66.50ms
+WIN t=410s pub= 10020/s recv= 10001/s lag=197 pubErr=0 p50=1.46ms p99=35.23ms p999=69.89ms max=80.25ms
+WIN t=420s pub=  9968/s recv=  9980/s lag=75 pubErr=0 p50=1.50ms p99=36.83ms p999=55.49ms max=63.42ms
+WIN t=430s pub= 10021/s recv= 10020/s lag=87 pubErr=0 p50=1.57ms p99=47.77ms p999=63.87ms max=69.44ms
+WIN t=440s pub=  9982/s recv=  9990/s lag=2 pubErr=0 p50=1.35ms p99=31.55ms p999=43.62ms max=46.81ms
+WIN t=450s pub= 10010/s recv= 10009/s lag=10 pubErr=0 p50=1.50ms p99=37.82ms p999=52.80ms max=61.34ms
+WIN t=460s pub= 10000/s recv= 10001/s lag=0 pubErr=0 p50=1.47ms p99=41.05ms p999=89.47ms max=99.20ms
+WIN t=470s pub= 10013/s recv= 10000/s lag=125 pubErr=0 p50=1.44ms p99=42.30ms p999=75.84ms max=84.48ms
+WIN t=480s pub=  9986/s recv=  9998/s lag=0 pubErr=0 p50=1.54ms p99=46.85ms p999=77.69ms max=91.33ms
+WIN t=490s pub=  9991/s recv=  9985/s lag=64 pubErr=0 p50=1.46ms p99=41.34ms p999=66.24ms max=74.43ms
+WIN t=500s pub= 10011/s recv= 10017/s lag=1 pubErr=0 p50=1.44ms p99=37.98ms p999=61.92ms max=67.33ms
+WIN t=510s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=1.44ms p99=38.62ms p999=84.29ms max=93.57ms
+WIN t=520s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=1.38ms p99=29.76ms p999=39.26ms max=44.58ms
+WIN t=530s pub= 10000/s recv= 10000/s lag=3 pubErr=0 p50=1.44ms p99=34.75ms p999=69.50ms max=91.90ms
+WIN t=540s pub= 10019/s recv=  9982/s lag=375 pubErr=0 p50=1.42ms p99=34.62ms p999=52.67ms max=61.85ms
+WIN t=550s pub=  9981/s recv= 10018/s lag=1 pubErr=0 p50=1.51ms p99=38.62ms p999=48.64ms max=52.99ms
+WIN t=560s pub=  9997/s recv=  9997/s lag=2 pubErr=0 p50=1.47ms p99=34.98ms p999=46.27ms max=50.02ms
+WIN t=570s pub= 10003/s recv= 10003/s lag=0 pubErr=0 p50=1.46ms p99=35.49ms p999=55.36ms max=60.48ms
+WIN t=580s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=1.45ms p99=34.94ms p999=55.10ms max=60.70ms
+WIN t=590s pub=  9999/s recv=  9999/s lag=0 pubErr=0 p50=1.41ms p99=32.34ms p999=43.42ms max=50.43ms
+WIN t=600s pub= 10001/s recv= 10001/s lag=0 pubErr=0 p50=1.38ms p99=30.86ms p999=39.49ms max=43.84ms
+RESULT e2e sys=nsq size=1024 rate=10000 dur=10m0s sent=6000001 recv=6000001 pubErr=0 p50=1.46ms p99=37.25ms p999=59.77ms max=105.60ms
+STATS cpu_avg=42% cpu_max=45% anon_max=10MB cur_max=1024MB oom=0 samples=595
+mem first/last min (cpu anon cur oom): 41 9 533 0 -> 40 9 1023 0
+9.6G	/data
+== backlog sys=nsq 3M x 1KB 无消费者写入后排空
+RESULT pub sys=nsq size=1024 c=4 async=1000 n=3000000 elapsed=59.0s rate=50810 msg/s 52.0 MB/s errors=0 async
+3.0G	/data
+RESULT sub sys=nsq size=1024 c=16 inflight=1000 n=3000004 elapsed=53.5s rate=56126 msg/s 57.5 MB/s
+STATS cpu_avg=56% cpu_max=69% anon_max=8MB cur_max=1024MB oom=0 samples=112
+OOMKilled=false Status=running
+server error lines: 1
+== soak sys=js 10k/s 10min
+WIN t= 10s pub= 10057/s recv= 10057/s lag=0 pubErr=0 p50=0.21ms p99=2.08ms p999=25.14ms max=50.69ms
+WIN t= 20s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.21ms p99=1.66ms p999=3.02ms max=5.57ms
+WIN t= 30s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.21ms p99=1.72ms p999=3.72ms max=5.82ms
+WIN t= 40s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.21ms p99=1.69ms p999=3.58ms max=7.96ms
+WIN t= 50s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.21ms p99=1.71ms p999=2.98ms max=4.79ms
+WIN t= 60s pub=  9999/s recv=  9999/s lag=0 pubErr=0 p50=0.21ms p99=1.69ms p999=3.25ms max=5.76ms
+WIN t= 70s pub= 10001/s recv= 10001/s lag=0 pubErr=0 p50=0.21ms p99=1.97ms p999=4.46ms max=9.89ms
+WIN t= 80s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.21ms p99=1.70ms p999=3.96ms max=9.23ms
+WIN t= 90s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.21ms p99=1.68ms p999=2.66ms max=4.00ms
+WIN t=100s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.21ms p99=1.75ms p999=4.12ms max=7.17ms
+WIN t=110s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.21ms p99=1.81ms p999=7.66ms max=13.75ms
+WIN t=120s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.21ms p99=1.65ms p999=3.30ms max=6.36ms
+WIN t=130s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.70ms p999=3.83ms max=8.73ms
+WIN t=140s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.60ms p999=3.48ms max=8.09ms
+WIN t=150s pub= 10000/s recv=  9999/s lag=10 pubErr=0 p50=0.20ms p99=1.60ms p999=2.88ms max=4.37ms
+WIN t=160s pub= 10000/s recv= 10002/s lag=0 pubErr=0 p50=0.20ms p99=1.54ms p999=2.73ms max=5.46ms
+WIN t=170s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.63ms p999=3.12ms max=5.58ms
+WIN t=180s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.56ms p999=3.12ms max=5.86ms
+WIN t=190s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.54ms p999=2.50ms max=4.28ms
+WIN t=200s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.55ms p999=2.57ms max=4.58ms
+WIN t=210s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.59ms p999=3.13ms max=5.73ms
+WIN t=220s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.68ms p999=3.03ms max=5.36ms
+WIN t=230s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.57ms p999=3.46ms max=12.54ms
+WIN t=240s pub= 10000/s recv= 10000/s lag=-1 pubErr=0 p50=0.20ms p99=1.61ms p999=3.13ms max=5.65ms
+WIN t=250s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.64ms p999=3.01ms max=5.19ms
+WIN t=260s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.58ms p999=3.28ms max=6.93ms
+WIN t=270s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.52ms p999=2.42ms max=4.10ms
+WIN t=280s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.54ms p999=2.49ms max=4.47ms
+WIN t=290s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.59ms p999=3.16ms max=7.94ms
+WIN t=300s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.58ms p999=2.55ms max=6.19ms
+WIN t=310s pub= 10000/s recv= 10000/s lag=-1 pubErr=0 p50=0.20ms p99=1.56ms p999=2.68ms max=4.56ms
+WIN t=320s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.60ms p999=3.27ms max=6.94ms
+WIN t=330s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.61ms p999=2.87ms max=4.57ms
+WIN t=340s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.63ms p999=3.19ms max=5.84ms
+WIN t=350s pub= 10000/s recv= 10000/s lag=2 pubErr=0 p50=0.20ms p99=1.59ms p999=3.06ms max=6.19ms
+WIN t=360s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.53ms p999=2.60ms max=4.08ms
+WIN t=370s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.60ms p999=2.98ms max=4.69ms
+WIN t=380s pub=  9999/s recv=  9999/s lag=0 pubErr=0 p50=0.20ms p99=1.56ms p999=2.94ms max=4.95ms
+WIN t=390s pub= 10001/s recv= 10001/s lag=0 pubErr=0 p50=0.20ms p99=1.66ms p999=4.49ms max=10.07ms
+WIN t=400s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.53ms p999=2.67ms max=6.47ms
+WIN t=410s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.21ms p99=2.21ms p999=5.53ms max=9.84ms
+WIN t=420s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.59ms p999=2.96ms max=5.12ms
+WIN t=430s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.64ms p999=2.71ms max=4.70ms
+WIN t=440s pub=  9999/s recv=  9999/s lag=2 pubErr=0 p50=0.20ms p99=1.57ms p999=3.12ms max=6.39ms
+WIN t=450s pub= 10001/s recv= 10001/s lag=0 pubErr=0 p50=0.20ms p99=1.56ms p999=2.76ms max=5.72ms
+WIN t=460s pub= 10000/s recv= 10000/s lag=-1 pubErr=0 p50=0.20ms p99=1.57ms p999=2.79ms max=5.46ms
+WIN t=470s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.57ms p999=2.96ms max=7.97ms
+WIN t=480s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.53ms p999=2.69ms max=4.87ms
+WIN t=490s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.57ms p999=2.34ms max=3.97ms
+WIN t=500s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.57ms p999=3.12ms max=6.01ms
+WIN t=510s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.63ms p999=3.46ms max=9.35ms
+WIN t=520s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.61ms p999=2.90ms max=5.61ms
+WIN t=530s pub=  9999/s recv=  9999/s lag=0 pubErr=0 p50=0.20ms p99=1.55ms p999=2.87ms max=6.33ms
+WIN t=540s pub= 10001/s recv= 10001/s lag=1 pubErr=0 p50=0.20ms p99=1.61ms p999=3.02ms max=6.35ms
+WIN t=550s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.70ms p999=3.62ms max=7.17ms
+WIN t=560s pub= 10000/s recv= 10000/s lag=1 pubErr=0 p50=0.20ms p99=1.57ms p999=2.93ms max=6.59ms
+WIN t=570s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.58ms p999=3.15ms max=13.06ms
+WIN t=580s pub= 10000/s recv= 10000/s lag=0 pubErr=0 p50=0.20ms p99=1.55ms p999=2.99ms max=6.43ms
+WIN t=590s pub=  9999/s recv=  9999/s lag=0 pubErr=0 p50=0.20ms p99=1.63ms p999=3.69ms max=10.59ms
+WIN t=600s pub=  9944/s recv=  9944/s lag=0 pubErr=0 p50=0.20ms p99=1.59ms p999=2.87ms max=5.76ms
+RESULT e2e sys=js size=1024 rate=10000 dur=10m0s sent=6000001 recv=6000001 pubErr=0 p50=0.20ms p99=1.63ms p999=3.24ms max=50.69ms
+STATS cpu_avg=60% cpu_max=62% anon_max=14MB cur_max=284MB oom=0 samples=595
+mem first/last min (cpu anon cur oom): 61 13 28 0 -> 60 14 284 0
+60.0K	/data
+== backlog sys=js 3M x 1KB 无消费者写入后排空
+RESULT pub sys=js size=1024 c=4 async=1000 n=3000000 elapsed=10.6s rate=283852 msg/s 290.7 MB/s errors=0 async
+3.0G	/data
+RESULT sub sys=js size=1024 c=16 inflight=1000 n=3000004 elapsed=11.7s rate=256050 msg/s 262.2 MB/s
+STATS cpu_avg=103% cpu_max=131% anon_max=191MB cur_max=1024MB oom=0 samples=22
+OOMKilled=false Status=running
+server error lines: 0

@@ -1,0 +1,18 @@
+# 多账号隔离验证（PRODUCT_A、PRODUCT_B、SYS；B 的磁盘配额故意设为 64MB）
+== product_a 看到的 stream
+jobs
+== product_b 看到的 stream
+jobs                                         # 两个账号各有一个同名的 jobs，互不冲突
+== 两个账号各自 jobs stream 的消息数
+A: "messages": 2                             # A 发布了 19 个任务，其中 2 个延迟（定时消息）
+B: "messages": 0
+== subject 隔离：B 订阅 jobs.>，A 向 jobs.test 发 5 条
+A 自己订阅收到（对照）: 5
+B 收到: 0
+== 配额：B 只有 64MB，写 100MB（10 万条 1KB）
+rate=20694 msg/s 21.2 MB/s errors=36638
+B 的 BENCH stream: "messages": 63370 "bytes": 67108830
+== 运维账号 SYS：nats server report jetstream 能看到全局汇总；nats server report accounts 只列出有连接的账号
+== 修改配置后 docker kill -s HUP nats：
+[INF] Reloaded: accounts
+[INF] Reloaded server configuration

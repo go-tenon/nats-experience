@@ -1,0 +1,7 @@
+== defer sys=nsq n=600000 inflight=1000 action=none
+PROG published n=600000 errs=0 t=17.0s
+mem with all deferred: 52 946 1022 0  (cpu% anonMB curMB oom)
+nsq 2026/11/16 20:23:47 ERR    1 [bench/worker] (127.0.0.1:14150) error connecting to nsqd - dial tcp 127.0.0.1:14150: connect: connection refused
+RESULT defer sys=nsq n=600000 delay=1m0s inflight=1000 deferred=568821 redelivered=0
+STATS cpu_avg=62% cpu_max=69% anon_max=946MB cur_max=1023MB oom=0 samples=20
+OOMKilled=true Status=exited

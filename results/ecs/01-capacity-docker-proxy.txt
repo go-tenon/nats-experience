@@ -1,0 +1,7 @@
+# 阿里云经济型 2 核 2G ECS（新加坡），PostgreSQL 18 + NATS 2.15 + tenonload 同机，容器用 -p 端口映射（docker-proxy）。
+# 处理函数为空，每档 30 秒。上限约 1300/s；满载时 top 显示 docker-proxy（pg 的端口转发）单个进程占 37.5% CPU，nats 的占 4.4%，软中断约 10%。
+RESULT rate=200 pub=200/s handled=200/s backlog_at_end=1 slot_lag=456B js_pending=0 pubErr=0 | tx p50=2.7ms p99=5.3ms max=21ms | e2e p50=4.6ms p99=8.8ms max=19ms | app_rss_max=20MB pg_anon=13MB nats_anon=7MB
+RESULT rate=500 pub=500/s handled=500/s backlog_at_end=5 slot_lag=2280B js_pending=0 pubErr=0 | tx p50=2.9ms p99=25.7ms max=88ms | e2e p50=11.4ms p99=64.2ms max=101ms | app_rss_max=22MB pg_anon=19MB nats_anon=12MB
+RESULT rate=1000 pub=1000/s handled=997/s backlog_at_end=88 slot_lag=8992B js_pending=59 pubErr=0 | tx p50=4.7ms p99=40.2ms max=95ms | e2e p50=33.9ms p99=294.1ms max=496ms | app_rss_max=22MB nats_anon=20MB pg_anon=19MB
+RESULT rate=2000 pub=1323/s handled=1323/s backlog_at_end=27 slot_lag=456B js_pending=0 pubErr=0 | tx p50=7643.1ms p99=15204.4ms max=15417ms | e2e p50=26.5ms p99=143.5ms max=189ms | app_rss_max=23MB pg_anon=19MB nats_anon=36MB
+RESULT rate=0 pub=1341/s handled=1338/s backlog_at_end=71 slot_lag=32320B js_pending=61 pubErr=0 | tx p50=23.0ms p99=43.5ms max=146ms | e2e p50=25.5ms p99=123.5ms max=193ms | app_rss_max=23MB pg_anon=19MB nats_anon=51MB

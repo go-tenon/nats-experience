@@ -1,0 +1,8 @@
+== defer sys=js n=200000 inflight=1000 action=kill
+PROG published n=200000 errs=0 t=1.4s
+DEFERRED_ALL t=1.7s
+mem with all deferred: 0 86 296 0  (cpu% anonMB curMB oom)
+DEFERRED_ALL t=1.7s
+RESULT defer sys=js n=200000 delay=1m0s inflight=1000 deferred=200000 redelivered=200000
+STATS cpu_avg=48% cpu_max=109% anon_max=86MB cur_max=296MB oom=0 samples=4
+OOMKilled=false Status=running

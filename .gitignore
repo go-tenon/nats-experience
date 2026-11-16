@@ -1,0 +1,8 @@
+# 脚本的中间输出（采样、日志）
+out/
+# 编译出的二进制
+tools/mqbench/mqbench
+tools/tenonload/tenonload
+tools/tenonmig/tenonmig
+tools/schedexp/schedexp
+*-amd64

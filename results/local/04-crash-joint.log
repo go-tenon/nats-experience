@@ -1,0 +1,16 @@
+== joint crash sys=nsq run=1 (5s/任务, 200 并发)
+PROG published 3000
+processed before crash: 600
+RESULT check sys=nsq n=3000 processed=2800 lost=200 dup=0 sampleLost=[600 601 602 603 604]
+== joint crash sys=nsq run=2 (5s/任务, 200 并发)
+PROG published 3000
+processed before crash: 600
+RESULT check sys=nsq n=3000 processed=2800 lost=200 dup=0 sampleLost=[600 601 602 603 604]
+== joint crash sys=js run=1 (5s/任务, 200 并发)
+PROG published 3000
+processed before crash: 600
+RESULT check sys=js n=3000 processed=3000 lost=0 dup=0 sampleLost=[]
+== joint crash sys=js run=2 (5s/任务, 200 并发)
+PROG published 3000
+processed before crash: 600
+RESULT check sys=js n=3000 processed=3000 lost=0 dup=0 sampleLost=[]
