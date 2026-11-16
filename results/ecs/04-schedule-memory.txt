@@ -1,8 +1,0 @@
-# 定时消息（tenon 中 max_defer 以内的延迟任务和重试）在 NATS 中的内存占用。延迟 30 分钟。
-# 发布前 NATS 进程 anon 已有 221MB（前面积压测试留下的、Go 还没还给系统的内存），所以最后重启 NATS 测干净的占用。
-before: deferred=0 stream_msgs=218 stream_bytes=67124 nats_anon=221MB
-deferred=100000 stream_msgs=100218 stream_bytes=45557124 nats_anon=266MB
-deferred=240000 stream_msgs=240218 stream_bytes=109239124 nats_anon=395MB
-# 重启 NATS，从磁盘重新加载 24 万条定时消息之后：
-after restart: deferred=240000 stream_msgs=240218 stream_bytes=109239124 nats_anon=198MB   （docker stats: 202.5MiB）
-# 约 0.75KB/条：100 万条约 750MB。每条定时消息独占一个 subject，服务端为每个 subject 维护索引。

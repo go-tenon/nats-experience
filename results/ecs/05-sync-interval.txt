@@ -1,5 +1,0 @@
-# JetStream 磁盘同步策略的代价（scripts/ecs/sync-test.sh）。客户端和服务端共用 2 核，只比较相对差异。消息 1KB。
-sync=default | c16: rate=24423 p50=0.51ms p99=2.91ms | c64: rate=27982 p50=1.91ms p99=8.03ms | async: rate=99172 | drain: rate=81256 | e2e1k: rate=1000 p50=0.81ms p99=2.33ms | e2e3k: rate=3000 p50=0.65ms p99=5.00ms
-sync=1s      | c16: rate=22359 p50=0.55ms p99=3.21ms | c64: rate=24840 p50=2.15ms p99=9.06ms | async: rate=92697 | drain: rate=78959 | e2e1k: rate=1000 p50=0.81ms p99=2.31ms | e2e3k: rate=3000 p50=0.65ms p99=5.14ms
-sync=always  | c16: rate=455 p50=35.36ms p99=49.98ms | c64: rate=459 p50=139.01ms p99=168.83ms | async: rate=456 | drain: rate=454 | e2e1k: 跟不上，p50=77987.84ms | e2e3k: 跟不上，p50=59015.17ms
-# always 时 iostat：每秒约 1364 次写、912 次 flush，磁盘利用率约 90%。每条消息的写入和确认各需要一次 fsync。

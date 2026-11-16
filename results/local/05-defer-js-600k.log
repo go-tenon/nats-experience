@@ -1,8 +1,0 @@
-== defer sys=js n=600000 inflight=1000 action=none
-PROG published n=600000 errs=0 t=4.1s
-DEFERRED_ALL t=5.5s
-mem with all deferred: 0 167 796 0  (cpu% anonMB curMB oom)
-DEFERRED_ALL t=5.5s
-RESULT defer sys=js n=600000 delay=1m0s inflight=1000 deferred=600000 redelivered=600000
-STATS cpu_avg=20% cpu_max=122% anon_max=203MB cur_max=797MB oom=0 samples=68
-OOMKilled=false Status=running

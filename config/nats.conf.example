@@ -1,4 +1,4 @@
-# 多产品共用的单机 NATS 配置模板。scripts/ecs/install-nats.sh 按这个结构生成。
+# 多产品共用的单机 NATS 配置模板。scripts/install-nats.sh 按这个结构生成。
 # <...> 是占位符：密码哈希用 `nats server passwd` 生成，明文不要写进配置。
 server_name: nats-1
 
