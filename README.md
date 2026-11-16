@@ -4,24 +4,35 @@
 
 ## 快速开始
 
-Ubuntu 云主机，与应用服务器同一个 VPC：
-
 ```bash
-bash scripts/install-docker.sh            # 完成后重新登录
-ALLOW_CIDR=<VPC 网段> bash scripts/install-nats.sh product_a product_b
-sudo cat /etc/nats/product_a.password     # product_a 的密码
+sudo apt-get install -y docker.io docker-compose-v2 && sudo usermod -aG docker $USER   # 重新登录
+git clone git@github.com:go-tenon/nats-experience.git ~/nats && cd ~/nats
+cp nats.conf.example nats.conf && chmod 600 nats.conf     # 填入密码哈希，见 docs/02-accounts.md
+docker compose up -d
+curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'
 ```
+
+云平台安全组放行应用服务器访问 4222；开启磁盘自动快照。
 
 应用配置：
 
 ```yaml
 nats:
-  url: ${NATS_URL}   # nats://product_a:<密码>@<内网 IP>:4222
+  url: ${NATS_URL}   # nats://product_a:<密码>@<NATS 地址>:4222
 queue:
   max_defer: 10m
 ```
 
-上线前：安全组只放行应用服务器访问 4222；开启磁盘自动快照。
+## 文件
+
+| 文件 | 作用 |
+|---|---|
+| `compose.yaml` | NATS；`observe` profile 为 OpenObserve 采集组件 |
+| `nats.conf.example` | NATS 配置模板，复制为 `nats.conf` |
+| `otelcol.yaml` | OpenTelemetry Collector 配置 |
+| `.env.example` | OpenObserve 地址和认证，复制为 `.env` |
+
+`nats.conf`、`.env` 含密码哈希和认证信息，已在 `.gitignore` 中。
 
 ## 文档
 
@@ -29,11 +40,4 @@ queue:
 - [02 账号](docs/02-accounts.md)
 - [03 运维](docs/03-operations.md)
 - [04 迁移](docs/04-migration.md)
-
-## 文件
-
-| 文件 | 作用 |
-|---|---|
-| `scripts/install-docker.sh` | 安装 Docker |
-| `scripts/install-nats.sh` | 部署或更新 NATS：账号、密码、配置、容器、防火墙。可重复运行 |
-| `config/nats.conf.example` | 配置模板 |
+- [05 接入 OpenObserve](docs/05-openobserve.md)

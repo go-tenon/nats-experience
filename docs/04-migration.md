@@ -6,10 +6,8 @@ worker 停止期间，发布照常进行，新任务留在 PostgreSQL 的复制�
 
 ## 1. 准备新服务器
 
-1. 按 [01 部署](01-deploy.md) 安装 Docker。
-2. 复制旧服务器的 `/etc/nats/product_a.password` 到新服务器同一路径（属主 root，权限 600），保持密码不变。
-3. `bash scripts/install-nats.sh product_a`
-4. 确认应用服务器能访问新服务器的 4222。
+1. 按 [01 部署](01-deploy.md) 部署，`nats.conf` 中只保留 `PRODUCT_A` 和 `SYS`，`product_a` 使用旧服务器上的同一个哈希，密码不变。
+2. 安全组放行应用服务器访问新服务器的 4222。
 
 ## 2. 缩短 max_defer（可选，提前一天）
 
@@ -23,34 +21,35 @@ worker 停止期间，发布照常进行，新任务留在 PostgreSQL 的复制�
 
 ```bash
 mkdir -p ~/natsbackup && chmod 777 ~/natsbackup
+export NATS_PASSWORD=<product_a 的密码>
 nbx() { h=$1; shift; docker run --rm --network host -v ~/natsbackup:/backup \
-  -e NATS_URL=nats://$h -e NATS_USER=product_a -e NATS_PASSWORD="$(sudo cat /etc/nats/product_a.password)" \
+  -e NATS_URL=nats://$h -e NATS_USER=product_a -e NATS_PASSWORD \
   natsio/nats-box:latest nats "$@"; }
 
-nbx <旧 IP>:4222 backup stream jobs /backup/jobs --no-progress
-nbx <新 IP>:4222 backup restore stream /backup/jobs --no-progress
+nbx <旧地址>:4222 backup stream jobs /backup/jobs --no-progress
+nbx <新地址>:4222 backup restore stream /backup/jobs --no-progress
 
-nbx <旧 IP>:4222 stream info jobs | grep -i messages    # 两边消息数相同
-nbx <新 IP>:4222 stream info jobs | grep -i messages
-nbx <新 IP>:4222 consumer ls jobs
+nbx <旧地址>:4222 stream info jobs | grep -i messages    # 两边消息数相同
+nbx <新地址>:4222 stream info jobs | grep -i messages
+nbx <新地址>:4222 consumer ls jobs
 ```
 
 ## 5. 切换
 
 1. 应用的 `NATS_URL` 改为新服务器。
 2. 启动 worker，重启其他使用 NATS 的进程（广播、实时频道）。
-3. 检查：`nbx <新 IP>:4222 consumer report jobs`、tenon 队列面板。
+3. 检查：`nbx <新地址>:4222 consumer report jobs`、tenon 队列面板。
 
 ## 6. 清理旧服务器
 
 确认正常后立即执行：
 
 ```bash
-nbx <旧 IP>:4222 stream rm jobs -f
-bash scripts/install-nats.sh <其余产品>    # 不再列出 product_a
-sudo rm /etc/nats/product_a.password
+nbx <旧地址>:4222 stream rm jobs -f
 sudo rm -rf ~/natsbackup
 ```
+
+从旧服务器的 `nats.conf` 中删除 `PRODUCT_A`，热加载。
 
 旧 stream 中的定时消息到时仍会触发，worker 误连旧服务器会重复处理任务。
 
