@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
-# 在一台 Ubuntu 上部署多产品共用的单机 NATS（JetStream + 每个产品一个账号）。可以重复运行：已有的密码不会改变。
+# 部署或更新多产品共用的 NATS。可重复运行，已有密码沿用。
 #
-#   bash install-nats.sh product_a product_b      # 每个参数是一个产品的用户名，账号名是它的大写
+#   bash install-nats.sh product_a product_b    # 参数为产品用户名，账号名为其大写；须列出全部产品
 #
 # 环境变量：
-#   NATS_IMAGE   默认 nats:2.15.3-alpine（固定版本）
-#   PRIVATE_IP   默认取 eth0 的地址，NATS 只监听它
-#   ALLOW_CIDR   允许访问 4222 的网段，默认 172.16.0.0/12（阿里云 VPC 常用网段，按实际 VPC 修改）
-#   QUOTA_FILE   每个产品的 JetStream 磁盘配额，默认 5GB
-#   QUOTA_MEM    每个产品的 JetStream 内存配额，默认 64MB
-#   SERVER_NAME  默认沿用已有配置中的 server_name，没有时用主机名（重新加载时不能修改它）
+#   ALLOW_CIDR   允许访问 4222 的网段，默认 172.16.0.0/12
+#   PRIVATE_IP   监听地址，默认 eth0 的地址
+#   QUOTA_FILE   每个账号的磁盘配额，默认 5GB
+#   QUOTA_MEM    每个账号的内存配额，默认 64MB
+#   NATS_IMAGE   默认 nats:2.15.3-alpine
+#   SERVER_NAME  默认沿用现有配置，否则为主机名
 #
-# 结果：/etc/nats/nats.conf、每个用户的明文密码 /etc/nats/<用户>.password（只有 root 可读），
-# 容器 nats（host 网络、自动重启），ufw 只放行 SSH 和 ALLOW_CIDR 访问 4222。
+# 产出：/etc/nats/nats.conf；/etc/nats/<用户>.password（仅 root 可读）；容器 nats；ufw 规则。
 set -euo pipefail
 [ $# -ge 1 ] || { echo "用法：$0 <产品用户名>..." >&2; exit 2; }
 IMAGE=${NATS_IMAGE:-nats:2.15.3-alpine}
@@ -26,7 +25,7 @@ sudo mkdir -p /etc/nats
 docker pull -q "$IMAGE" >/dev/null
 docker pull -q natsio/nats-box:latest >/dev/null
 
-# hash 用户：生成（或沿用）这个用户的密码，输出 bcrypt 哈希。明文只保存在 /etc/nats/<用户>.password。
+# 生成或沿用用户的密码，输出 bcrypt 哈希
 hash() {
   local f=/etc/nats/$1.password
   if ! sudo test -s "$f"; then
@@ -51,24 +50,23 @@ hs=$(hash sys)
 
 [ -f /etc/nats/nats.conf ] && sudo cp /etc/nats/nats.conf "/etc/nats/nats.conf.$(date +%Y%m%d%H%M%S).bak"
 sudo tee /etc/nats/nats.conf >/dev/null <<CONF
-# NATS 多产品共用配置。由 install-nats.sh 生成。
+# 由 install-nats.sh 生成
 server_name: $NAME
 
-# 只监听内网。云厂商的公网 IP 通常经 NAT 映射到这个地址，所以另由防火墙限制来源。
+# 只监听内网；公网访问由安全组和 ufw 限制
 listen: $IP:4222
-# 监控端口只给本机
+# 监控，仅本机
 http: 127.0.0.1:8222
 
 jetstream {
   store_dir: /data
-  # 每秒同步一次磁盘：断电时最多丢最近约 1 秒的写入。always 在普通云盘上只有约 450 条/秒。
+  # 每秒同步磁盘，断电最多丢约 1 秒的写入
   sync_interval: "1s"
   max_file_store: 30GB
   max_memory_store: 256MB
 }
 
-# 每个产品一个账号：subject 和 stream 互相隔离，JetStream 资源单独限额。
-# 增删账号、改配额后：docker kill -s HUP nats
+# 每个产品一个账号。修改后 docker kill -s HUP nats
 accounts {
 $accounts  SYS: {
     users: [ { user: sys, password: "$hs" } ]

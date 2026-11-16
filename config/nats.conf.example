@@ -1,23 +1,21 @@
-# 多产品共用的单机 NATS 配置模板。scripts/install-nats.sh 按这个结构生成。
-# <...> 是占位符：密码哈希用 `nats server passwd` 生成，明文不要写进配置。
+# 配置模板，install-nats.sh 按此结构生成。<...> 为占位符，哈希用 `nats server passwd` 生成。
 server_name: nats-1
 
-# 只监听内网地址；云厂商的公网 IP 通常经 NAT 映射到这个地址，要另用防火墙或安全组限制来源
+# 只监听内网；公网访问由安全组和 ufw 限制
 listen: <内网 IP>:4222
-# 监控端口只给本机：curl 127.0.0.1:8222/healthz
+# 监控，仅本机
 http: 127.0.0.1:8222
 
 jetstream {
   store_dir: /data
-  # 每秒同步一次磁盘：断电时最多丢最近约 1 秒的写入；默认 2 分钟；always 在普通云盘上只有约 450 条/秒
+  # 每秒同步磁盘，断电最多丢约 1 秒的写入
   sync_interval: "1s"
-  # 所有账号的 max_file 之和不要超过它
+  # 各账号 max_file 之和不超过此值
   max_file_store: 30GB
   max_memory_store: 256MB
 }
 
-# 每个产品一个账号：subject 和 stream 互相隔离，JetStream 资源单独限额，CPU 和磁盘 IO 不隔离。
-# 增删账号、改配额后 `docker kill -s HUP nats` 重新加载，不用重启。
+# 每个产品一个账号。修改后 docker kill -s HUP nats
 accounts {
   PRODUCT_A: {
     jetstream: { max_file: 5GB, max_mem: 64MB, max_streams: 20, max_consumers: 200 }
@@ -27,7 +25,7 @@ accounts {
     jetstream: { max_file: 5GB, max_mem: 64MB, max_streams: 20, max_consumers: 200 }
     users: [ { user: product_b, password: "<bcrypt 哈希>" } ]
   }
-  # 运维账号：查看全局状态（nats server report ...），不给应用用
+  # 运维账号，不给应用用
   SYS: {
     users: [ { user: sys, password: "<bcrypt 哈希>" } ]
   }

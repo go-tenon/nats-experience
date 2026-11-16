@@ -1,6 +1,6 @@
-# Ubuntu 上安装 Docker 和 sysstat（iostat）。
+# 安装 Docker（Ubuntu）
 set -e
 sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker.io sysstat
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker.io
 sudo usermod -aG docker "$USER"
 sudo systemctl enable --now docker
