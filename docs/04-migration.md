@@ -18,8 +18,6 @@ worker 停止期间发布照常进行，新任务留在 PostgreSQL 中，worker 
    nats context add product_a_new --server nats://<新地址>:4222 --creds ~/.local/share/nats/nsc/keys/creds/tenon/PRODUCT_A/app.creds
    ```
 
-提前一天把 `queue.max_defer` 改为 1–5 分钟，可以减少要搬的定时消息。
-
 ## 2. 切换
 
 ```bash
