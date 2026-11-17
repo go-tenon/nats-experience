@@ -1,0 +1,13 @@
+[Unit]
+Description=Prometheus NATS Exporter
+After=nats-server.service
+
+[Service]
+Type=simple
+DynamicUser=true
+ExecStart=/usr/bin/prometheus-nats-exporter -addr 127.0.0.1 -port 7777 -varz -connz -healthz -accstatz -jsz=all http://127.0.0.1:8222
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
