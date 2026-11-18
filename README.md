@@ -121,7 +121,7 @@ accounts {
 }
 ```
 
-需要更多账号时照着 `A` 加一段。文件中有密码，保存后执行 `chmod 600 config/nats.conf`，并另外保存到离线或加密存储。
+需要更多账号时照着 `A` 加一段。文件中有全部账号的密码，另外保存到离线或加密存储。
 
 ### Makefile
 
@@ -154,8 +154,6 @@ curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 nats:
   url: nats://a:<密码>@<NATS 地址>:4222
 ```
-
-应用的配置文件权限设为 600。
 
 `jobs.>`（`queue.stream` 的 subject 范围）只给队列用。不要给 `jobs` stream 设置 `max_age`，容量上限配合 `discard: new`：否则会删掉还没执行的延迟任务，worker 发现时拒绝启动。
 
