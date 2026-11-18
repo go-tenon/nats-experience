@@ -29,10 +29,8 @@ mkdir -p nats/{config,data,cli,backup} && cd nats
 ### compose.yaml
 
 ```yaml
-name: nats
-
 services:
-  nats:
+  server:
     image: nats:2.15.3-alpine
     command: ["-c", "/etc/nats/nats.conf"]
     restart: unless-stopped
@@ -70,11 +68,11 @@ services:
   # NATS 的指标转成 Prometheus 格式，由主机上的 OpenObserve agent 抓取
   exporter:
     image: natsio/prometheus-nats-exporter:0.20.3
-    command: ["-varz", "-connz", "-healthz", "-accstatz", "-jsz=all", "http://nats:8222"]
+    command: ["-varz", "-connz", "-healthz", "-accstatz", "-jsz=all", "http://server:8222"]
     restart: unless-stopped
     ports:
       - "127.0.0.1:7777:7777"
-    depends_on: [nats]
+    depends_on: [server]
 ```
 
 ### config/nats.conf
@@ -83,7 +81,7 @@ services:
 
 ```
 # 修改后执行 make reload。修改 server_name、listen、http 或 jetstream 段
-# （调大 max_file_store、max_memory_store 除外）后，重建 nats 容器
+# （调大 max_file_store、max_memory_store 除外）后，重建 server 容器
 server_name: nats-1
 
 listen: 0.0.0.0:4222
@@ -132,12 +130,12 @@ accounts {
 
 # 检查 config/nats.conf 的语法，通过后让 NATS 重新加载，已有连接保持
 reload:
-> sudo docker compose exec nats nats-server -t -c /etc/nats/nats.conf
+> sudo docker compose exec server nats-server -t -c /etc/nats/nats.conf
 # 发送 HUP 信号，输出中的 Killed 表示信号已送达
-> sudo docker compose kill -s HUP nats
+> sudo docker compose kill -s HUP server
 > sleep 1
-# 成功时最后一行是 Reloaded server configuration；出现 not supported 时重建 nats 容器使修改生效
-> sudo docker compose logs --tail 3 nats
+# 成功时最后一行是 Reloaded server configuration；出现 not supported 时重建 server 容器使修改生效
+> sudo docker compose logs --tail 3 server
 ```
 
 ### 启动
@@ -147,7 +145,7 @@ sudo docker compose up -d --wait
 curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 ```
 
-在云平台安全组中只放行应用服务器访问 4222。日志用 `sudo docker compose logs nats` 或 `journalctl -t nats` 查看。
+在云平台安全组中只放行应用服务器访问 4222。日志用 `sudo docker compose logs server` 或 `journalctl -t nats` 查看。
 
 ## 应用配置
 
@@ -172,12 +170,12 @@ nats:
 
    ```bash
    # 名字 sys：系统账号 SYS 的用户 admin
-   nats context add sys --server nats://nats:4222 --user admin --password <admin 的密码>
+   nats context add sys --server nats://server:4222 --user admin --password <admin 的密码>
    # 名字 a：账号 A 的用户 a
-   nats context add a --server nats://nats:4222 --user a --password <a 的密码>
+   nats context add a --server nats://server:4222 --user a --password <a 的密码>
    ```
 
-   `nats://nats:4222` 是 `cli` 容器访问 `nats` 容器的地址。
+   `nats://server:4222` 是 `cli` 容器访问 `server` 容器的地址。
 
 3. 操作时用 `--context` 选择以哪个用户的身份执行：
 
@@ -226,7 +224,7 @@ nats:
 状态：
 
 ```bash
-sudo docker compose ps                    # nats 为 healthy
+sudo docker compose ps                    # server 为 healthy
 nats --context a consumer report jobs     # 各 topic 的积压和处理中任务
 ```
 
@@ -237,7 +235,7 @@ nats --context a consumer pause jobs mail_send 1h
 nats --context a consumer resume jobs mail_send
 ```
 
-修改 `compose.yaml` 后执行 `sudo docker compose up -d --wait`；修改了 `nats.conf` 开头注释中列出的设置后执行 `sudo docker compose up -d --wait --force-recreate nats`。
+修改 `compose.yaml` 后执行 `sudo docker compose up -d --wait`；修改了 `nats.conf` 开头注释中列出的设置后执行 `sudo docker compose up -d --wait --force-recreate server`。
 
 升级：磁盘快照 → 修改 `compose.yaml` 中的镜像版本 → `sudo docker compose up -d --wait`。
 
