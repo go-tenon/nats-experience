@@ -274,53 +274,19 @@ worker 停止期间发布照常进行，新任务留在 PostgreSQL 中，worker 
 
 ## 跨账号 RPC
 
-账号 B、C 中的应用调用账号 A 中的 natsrpc 端点，以 A 的前缀 `a.v1` 为例。NATS 的导出、导入决定请求能否送到 A；能否调用由 natsrpc 的端点权限决定，调用时带上 A 签发的 API token（`natsrpc.Token`）。
+账号 B、C 中的应用调用账号 A 中的 natsrpc 端点时，直接连到 A 的账号。以 A 的前缀 `a.v1` 为例。
 
-### 同一台 NATS：导出和导入
-
-在 `config/nats.conf` 的 A 中导出一次，每个调用方导入，然后 `make reload`。A 中加：
+在 `config/nats.conf` 的 A 中为每个调用方加一个用户，然后 `make reload`：
 
 ```
-    exports = [
-      { service: "a.v1.>" }
-    ]
+      { user: rpc_b, password: "<密码>" }
 ```
 
-B 中加：
-
-```
-    imports = [
-      { service: { account: A, subject: "a.v1.>" } }
-    ]
-```
-
-调用方用自己的连接调用；未导出的 subject 返回 `natsrpc.ErrNoResponders`：
+调用方另建一条连到 A 的连接，调用时带上 A 签发的 API token：
 
 ```go
-out, err := natsrpc.Call[ArticleDTO](ctx, nc, "a.v1.articles.get", in, natsrpc.Token(token))
+ncA, err := natsx.Connect(natsx.Config{URL: "nats://rpc_b:<密码>@<NATS 地址>:4222"}, "b", logger)
+out, err := natsrpc.Call[ArticleDTO](ctx, ncA, "a.v1.articles.get", in, natsrpc.Token(token))
 ```
 
-### 不同的 NATS：调用方直连 A
-
-A 迁到单独的 NATS 后，导入失效。在 A 的 NATS 上，A 的 `users` 中为每个调用方加一个只能调用 RPC 的用户，然后 `make reload`：
-
-```
-      {
-        user: rpc_b, password: "<密码>"
-        permissions: {
-          publish: "a.v1.>"
-          subscribe: "_INBOX_b.>"
-        }
-      }
-```
-
-这个用户只能向 `a.v1.>` 发请求、在 `_INBOX_b.>` 收回复，A 的其他 subject 和 JetStream 都被拒绝。每个调用方使用专用的收件箱前缀（C 用 `rpc_c` 和 `_INBOX_c`），只收到自己请求的回复。
-
-调用方另建一条连接，用 nats.go 建立，以便设置收件箱前缀：
-
-```go
-nca, err := nats.Connect("nats://rpc_b:<密码>@<A 的地址>:4222",
-    nats.CustomInboxPrefix("_INBOX_b"),
-    nats.MaxReconnects(-1))
-out, err := natsrpc.Call[ArticleDTO](ctx, nca, "a.v1.articles.get", in, natsrpc.Token(token))
-```
+这个用户能访问 A 账号中的全部 subject 和 stream，按团队约定只用它调用 RPC。A 迁到单独的 NATS 后，调用方只改连接地址。
