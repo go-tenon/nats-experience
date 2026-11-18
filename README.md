@@ -258,7 +258,7 @@ sudo /usr/local/bin/otelcol-contrib validate --config /etc/otel-config.yaml
 sudo systemctl restart otel-collector
 ```
 
-在 Dashboards → Import 中导入官方看板 [nats_dashboard.json](https://openobserve-prod-website.s3.us-west-2.amazonaws.com/assets/nats_dashboard_c317f090bb.json)。告警：
+在 Dashboards → Import 中导入官方看板 [nats_dashboard.json](https://openobserve-prod-website.s3.us-west-2.amazonaws.com/assets/nats_dashboard_c317f090bb.json)，其中 Idle connections 面板没有数据（exporter 不输出 `gnatsd_connz_idle`）。告警：
 
 | OpenObserve 中的 stream | 条件 |
 |---|---|
