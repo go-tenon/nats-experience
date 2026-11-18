@@ -1,6 +1,6 @@
 # NATS 部署与运维
 
-多产品共用的单机 NATS（JetStream），供 tenon 的队列、广播、实时频道和 RPC 使用。用 Docker Compose 运行，只有 `compose.yaml` 和 `config/nats.conf` 两个文件；每个产品一个账号（account），账号和密码写在 `nats.conf` 中，增删账号不用重启；某个产品流量变大后迁到单独的 NATS。
+多项目共用的单机 NATS（JetStream），供 tenon 的队列、广播、实时频道和 RPC 使用。用 Docker Compose 运行，只有 `compose.yaml` 和 `config/nats.conf` 两个文件；每个项目一个账号（account），账号和密码写在 `nats.conf` 中，增删账号不用重启；某个项目流量变大后迁到单独的 NATS。
 
 ## 机器
 
@@ -100,7 +100,7 @@ jetstream {
   max_memory_store: 256MB
 }
 
-# 每个产品一个账号（account），用户名在所有账号中唯一
+# 每个项目一个账号（account），用户名在所有账号中唯一
 system_account: SYS
 
 accounts {
@@ -134,7 +134,7 @@ curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 
 `config/nats.conf` 中的设置：
 
-| 项目 | 说明 |
+| 设置 | 说明 |
 |---|---|
 | `sync_interval: "1s"` | 每秒同步磁盘，吞吐下降 5–10%。`always` 在普通云盘上约 450 条/秒，不用 |
 | `max_file_store: 30GB` | 所有账号合计的磁盘上限。账号不设配额 |
