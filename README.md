@@ -48,9 +48,9 @@ services:
     ulimits:
       nofile: 65536
     logging:
+      driver: journald        # 写入 systemd 日志，由主机上的 OpenObserve agent 采集
       options:
-        max-size: 100m
-        max-file: "10"
+        tag: nats
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8222/healthz?js-enabled-only=true"]
       interval: 10s
@@ -68,50 +68,15 @@ services:
       - ./backup:/work/backup   # 迁移时的备份
     depends_on: [nats]
 
-  # 指标上报 OpenObserve，见 docs/04-openobserve.md
+  # NATS 的指标转成 Prometheus 格式，由主机上的 OpenObserve agent 抓取，见 docs/04-openobserve.md
   exporter:
     image: natsio/prometheus-nats-exporter:0.20.3
     command: ["-varz", "-connz", "-healthz", "-accstatz", "-jsz=all", "http://nats:8222"]
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:7777:7777"
     depends_on: [nats]
-
-  otelcol:
-    image: otel/opentelemetry-collector-contrib:0.165.0
-    command: ["--config=/etc/otelcol/otelcol.yaml"]
-    restart: unless-stopped
-    configs:
-      - source: otelcol
-        target: /etc/otelcol/otelcol.yaml
-    depends_on: [exporter]
-
-configs:
-  otelcol:
-    content: |
-      receivers:
-        prometheus:
-          config:
-            scrape_configs:
-              - job_name: nats
-                scrape_interval: 30s
-                static_configs:
-                  - targets: ["exporter:7777"]
-      processors:
-        batch:
-          timeout: 5s
-      exporters:
-        otlphttp/openobserve:
-          endpoint: https://<OpenObserve 地址>/api/<组织>
-          headers:
-            Authorization: Basic <令牌>
-      service:
-        pipelines:
-          metrics:
-            receivers: [prometheus]
-            processors: [batch]
-            exporters: [otlphttp/openobserve]
 ```
-
-把 `<OpenObserve 地址>`、`<组织>`、`<令牌>` 换成实际的值，见 [04 接入 OpenObserve](docs/04-openobserve.md)。文件中有令牌，保存后执行 `chmod 600 compose.yaml`。
 
 ### nats.conf
 
@@ -175,7 +140,7 @@ curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 | `max_file_store: 30GB` | 所有账号合计的磁盘上限。账号不设配额 |
 | `max_memory_store: 256MB` | 实时频道的在线成员使用内存存储 |
 
-`nats` 目录中会出现这些子目录：`data/` 是 JetStream 的数据，`cli/` 是命令行的 context（含密码），`backup/` 是迁移时的备份。日志用 `sudo docker compose logs nats` 查看，单个文件 100MB，保留 10 个。
+`nats` 目录中会出现这些子目录：`data/` 是 JetStream 的数据，`cli/` 是命令行的 context（含密码），`backup/` 是迁移时的备份。日志写入 systemd 日志（journald），用 `sudo docker compose logs nats` 或 `journalctl -t nats` 查看，保留多久由 journald 的设置决定。
 
 ## 应用配置
 
