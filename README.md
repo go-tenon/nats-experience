@@ -4,9 +4,9 @@
 
 ## 机器
 
-Ubuntu x86_64。2 核 2G 起，ESSD 并开启每天自动快照（JetStream 数据在 `/var/lib/nats`，在数据盘上时挂载到这个目录），与应用服务器在同一 VPC，连接走内网明文传输。
+本文以 Ubuntu x86_64 为例，主机可从 2 核、2 GiB 内存起步。使用支持快照的 SSD，按恢复目标设置快照频率。JetStream 数据保存在 `/var/lib/nats`，使用独立数据盘时将其挂载到该目录。示例部署在可信内网中，应用服务器通过内网明文连接 NATS。
 
-- CPU：2 核 2G 上 NATS 每秒处理上万条消息，CPU 不到 1 核。
+- CPU：按实际消息大小、收发速率和持久化负载压测后选型。
 - 内存：随积压和定时消息增长。消息内容存在磁盘上，内存是每条定时消息的索引和到期计时，每条约 0.75KB。tenon 的延迟任务和重试全部是定时消息，一直留在 NATS 中直到执行，100 万条约 750MB；应用会大量安排远期任务时，按条数预留内存。
 - 磁盘：按最大积压计算，1KB 的任务每 100 万条约 1GB。
 
@@ -45,7 +45,7 @@ sudo install -d -o nats -g nats -m 750 /var/lib/nats
 
 ### /etc/nats/nats.conf
 
-把账号名 `A`、用户名 `a` 换成实际的名字，每个 `<密码>` 换成 `openssl rand -hex 24` 生成的不同的随机串：
+按实际部署设置 `server_name`、应用账号 `A` 和用户名 `a`，并同步调整下文的命令示例。每个 `<密码>` 使用 `openssl rand -hex 24` 生成不同的随机串。示例中的 JetStream 磁盘和内存配额按数据目录可用空间和主机内存调整。
 
 ```
 # 修改后执行 sudo systemctl reload nats-server。修改 server_name、listen、http 或 jetstream 段
@@ -62,7 +62,7 @@ jetstream {
   # 每秒同步磁盘，吞吐下降 5–10%
   sync_interval: "1s"
   # 所有账号共用的磁盘上限，小于数据盘的可用空间
-  max_file_store: 30GB
+  max_file_store: 20GB
   # 实时频道的在线成员使用内存存储
   max_memory_store: 256MB
 }
@@ -117,8 +117,8 @@ TimeoutStopSec=30
 Restart=always
 RestartSec=2
 LimitNOFILE=65536
-# 内存的 60–80%
-Environment=GOMEMLIMIT=1200MiB
+# 2 GiB 主机上的示例值，按可用内存调整，为系统和采集进程预留空间
+Environment=GOMEMLIMIT=1GiB
 # 日志写入 journald，由主机上的 OpenObserve agent 采集
 SyslogIdentifier=nats
 
@@ -230,13 +230,13 @@ nats --context a consumer resume jobs mail_send
 
 tenon 的队列指标由应用直接上报。接入应用指标后，可按项目对 `queue.relay.active` 的实例总和持续为 0 设置告警，并关注 `queue.relay.lag` 和队列面板。可为指标停止上报另设告警。
 
-NATS 和主机按 [OpenObserve 的 NATS 接入文档](https://openobserve.ai/docs/integration/message-brokers/nats/) 接入：在服务器上安装 OpenObserve 的 agent（systemd 服务 `otel-collector`），它默认采集主机指标、journald（其中有 NATS 的日志）和 `/var/log`，再让它抓取 `prometheus-nats-exporter`（`127.0.0.1:7777`）给出的 NATS 指标。
+按 [OpenObserve 的 NATS 接入文档](https://openobserve.ai/docs/integration/message-brokers/nats/) 安装 OpenTelemetry Collector（示例服务名为 `otel-collector`），再配置它抓取本机 `127.0.0.1:7777` 上的 NATS 指标。需要主机指标或 NATS 日志时，确认对应的指标和 journald 采集已启用。
 
-在 OpenObserve 的 Data sources → Linux 中复制安装命令，形如：
+在目标 OpenObserve 组织的 Data sources → Linux 中复制安装命令。以下命令用示例地址和占位符表示：
 
 ```bash
 curl -O https://raw.githubusercontent.com/openobserve/agents/main/linux/install.sh && chmod +x install.sh
-sudo ./install.sh https://<OpenObserve 地址>/api/<组织>/ <令牌>
+sudo ./install.sh 'https://openobserve.example.com/api/<组织>/' '<令牌>'
 ```
 
 在 `/etc/otel-config.yaml` 的 `receivers` 中加一项：
@@ -251,7 +251,7 @@ sudo ./install.sh https://<OpenObserve 地址>/api/<组织>/ <令牌>
             - targets: ["127.0.0.1:7777"]
 ```
 
-再把 `service.pipelines.metrics` 的 `receivers` 改为 `[hostmetrics, prometheus/nats]`，然后检查并重启。重新运行 `install.sh`（例如升级 agent）会覆盖这个文件，之后要再加一次。
+在 `service.pipelines.metrics.receivers` 的现有列表中追加 `prometheus/nats`，然后检查配置并重启。重新运行 `install.sh`（例如升级 agent）前备份采集配置，升级后确认这项配置仍在。
 
 ```bash
 sudo /usr/local/bin/otelcol-contrib validate --config /etc/otel-config.yaml
