@@ -1,10 +1,10 @@
 # NATS 部署与运维
 
-多项目共用的单机 NATS（JetStream），供 tenon 的队列、广播、实时频道和 RPC 使用。用 Docker Compose 运行，只有 `compose.yaml`、`config/nats.conf` 和 `Makefile` 三个文件；每个项目一个账号（account），账号和密码写在 `nats.conf` 中，增删账号热加载生效；某个项目流量变大后迁到单独的 NATS。
+多项目共用的单机 NATS（JetStream），供 tenon 的队列、广播、实时频道和 RPC 使用。用 systemd 运行，只有 `/etc/nats/nats.conf` 和两个 systemd unit 三个文件；每个项目一个账号（account），账号和密码写在 `nats.conf` 中，增删账号热加载生效；某个项目流量变大后迁到单独的 NATS。
 
 ## 机器
 
-Ubuntu x86_64，装好 Docker、Docker Compose 和 make。2 核 2G 起，ESSD 并开启每天自动快照，与应用服务器在同一 VPC，连接走内网明文传输。
+Ubuntu x86_64。2 核 2G 起，ESSD 并开启每天自动快照（JetStream 数据在 `/var/lib/nats`，在数据盘上时挂载到这个目录），与应用服务器在同一 VPC，连接走内网明文传输。
 
 - CPU：2 核 2G 上 NATS 每秒处理上万条消息，CPU 不到 1 核。
 - 内存：随积压和定时消息增长。消息内容存在磁盘上，内存是每条定时消息的索引和到期计时，每条约 0.75KB。tenon 的延迟任务和重试全部是定时消息，一直留在 NATS 中直到执行，100 万条约 750MB；应用会大量安排远期任务时，按条数预留内存。
@@ -20,75 +20,44 @@ Ubuntu x86_64，装好 Docker、Docker Compose 和 make。2 核 2G 起，ESSD �
 
 ## 安装
 
-在有自动快照的磁盘上新建一个 `nats` 目录，连同 `compose.yaml` 挂载的子目录一起创建。下文的文件和命令都在这个目录中：
+参考 [OpenObserve 的 NATS 接入文档](https://openobserve.ai/docs/integration/message-brokers/nats/)，用官方二进制安装到 `/usr/local/bin`，配置在 `/etc/nats/nats.conf`，由 systemd 运行，日志写入 journald。
+
+### 程序
+
+下载 NATS、`nats` 命令行和指标导出器，创建运行 NATS 的用户和目录：
 
 ```bash
-mkdir -p nats/{config,data,cli,backup} && cd nats
+cd /tmp
+curl -fsSLO https://github.com/nats-io/nats-server/releases/download/v2.15.3/nats-server-v2.15.3-linux-amd64.tar.gz
+curl -fsSLO https://github.com/nats-io/natscli/releases/download/v0.5.2/nats-0.5.2-linux-amd64.zip
+curl -fsSLO https://github.com/nats-io/prometheus-nats-exporter/releases/download/v0.20.3/prometheus-nats-exporter-v0.20.3-linux-x86_64.tar.gz
+
+sudo tar xzf nats-server-v2.15.3-linux-amd64.tar.gz -C /usr/local/bin --strip-components=1 nats-server-v2.15.3-linux-amd64/nats-server
+sudo unzip -jo nats-0.5.2-linux-amd64.zip nats-0.5.2-linux-amd64/nats -d /usr/local/bin
+sudo tar xzf prometheus-nats-exporter-v0.20.3-linux-x86_64.tar.gz -C /usr/local/bin prometheus-nats-exporter
+nats-server --version && nats --version && prometheus-nats-exporter -version
+
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin nats
+sudo install -d -o root -g nats -m 750 /etc/nats
+sudo install -d -o nats -g nats -m 750 /var/lib/nats
 ```
 
-### compose.yaml
-
-```yaml
-services:
-  server:
-    image: nats:2.15.3-alpine
-    command: ["-c", "/etc/nats/nats.conf"]
-    restart: unless-stopped
-    ports:
-      - "4222:4222"           # 客户端，访问来源由云平台安全组控制
-      - "127.0.0.1:8222:8222" # 监控，只给本机
-    volumes:
-      - ./config:/etc/nats:ro # 挂载目录：编辑器保存 nats.conf 后，重新加载读到新内容
-      - ./data:/data          # JetStream 的数据
-    environment:
-      GOMEMLIMIT: 1200MiB     # 内存的 60–80%
-    stop_grace_period: 30s
-    ulimits:
-      nofile: 65536
-    logging:
-      driver: journald        # 写入 systemd 日志，由主机上的 OpenObserve agent 采集
-      options:
-        tag: nats
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8222/healthz?js-enabled-only=true"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-
-  # nats 命令行：sudo docker compose run --rm cli 进入容器
-  cli:
-    image: natsio/nats-box:0.20.2
-    profiles: [tools]
-    working_dir: /work
-    volumes:
-      - ./cli:/nsc/.config/nats # context，含密码
-      - ./backup:/work/backup   # 迁移时的备份
-
-  # NATS 的指标转成 Prometheus 格式，由主机上的 OpenObserve agent 抓取
-  exporter:
-    image: natsio/prometheus-nats-exporter:0.20.3
-    command: ["-varz", "-connz", "-healthz", "-accstatz", "-jsz=all", "http://server:8222"]
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:7777:7777"
-    depends_on: [server]
-```
-
-### config/nats.conf
+### /etc/nats/nats.conf
 
 把账号名 `A`、用户名 `a` 换成实际的名字，每个 `<密码>` 换成 `openssl rand -hex 24` 生成的不同的随机串：
 
 ```
-# 修改后执行 make reload。修改 server_name、listen、http 或 jetstream 段
-# （调大 max_file_store、max_memory_store 除外）后，重建 server 容器
+# 修改后执行 sudo systemctl reload nats-server。修改 server_name、listen、http 或 jetstream 段
+# （调大 max_file_store、max_memory_store 除外）后，执行 sudo systemctl restart nats-server
 server_name: nats-1
 
+# 客户端，访问来源由云平台安全组控制
 listen: 0.0.0.0:4222
-# 监控
-http: 0.0.0.0:8222
+# 监控，只给本机
+http: 127.0.0.1:8222
 
 jetstream {
-  store_dir: /data
+  store_dir: /var/lib/nats
   # 每秒同步磁盘，吞吐下降 5–10%
   sync_interval: "1s"
   # 所有账号共用的磁盘上限，小于数据盘的可用空间
@@ -118,31 +87,87 @@ accounts {
 }
 ```
 
+只让 `nats` 用户读取：
+
+```bash
+sudo chown root:nats /etc/nats/nats.conf && sudo chmod 640 /etc/nats/nats.conf
+```
+
 文件中有全部账号的密码，另外保存到离线或加密存储。
 
-### Makefile
+### /etc/systemd/system/nats-server.service
 
-```makefile
-# 命令行以 > 开头
-.RECIPEPREFIX = >
-.PHONY: reload
+```ini
+[Unit]
+Description=NATS Server
+After=network-online.target
+Wants=network-online.target
 
-# 检查 config/nats.conf 的语法，通过后让 NATS 重新加载，已有连接保持
-reload:
-> sudo docker compose exec server nats-server -t -c /etc/nats/nats.conf
-# 发送 HUP 信号，输出中的 Killed 表示信号已送达
-> sudo docker compose kill -s HUP server
-> sleep 1
-# 成功时最后一行是 Reloaded server configuration；出现 not supported 时重建 server 容器使修改生效
-> sudo docker compose logs --tail 3 server
+[Service]
+Type=simple
+User=nats
+Group=nats
+ExecStart=/usr/local/bin/nats-server -c /etc/nats/nats.conf
+# reload：先检查配置语法，通过后发送 HUP 热加载，已有连接保持
+ExecReload=/usr/local/bin/nats-server -t -c /etc/nats/nats.conf
+ExecReload=/bin/kill -s HUP $MAINPID
+KillSignal=SIGINT
+TimeoutStopSec=30
+Restart=always
+RestartSec=2
+LimitNOFILE=65536
+# 内存的 60–80%
+Environment=GOMEMLIMIT=1200MiB
+# 日志写入 journald，由主机上的 OpenObserve agent 采集
+SyslogIdentifier=nats
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/nats
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### /etc/systemd/system/prometheus-nats-exporter.service
+
+把 NATS 的指标转成 Prometheus 格式，只监听本机，由主机上的 OpenObserve agent 抓取：
+
+```ini
+[Unit]
+Description=Prometheus NATS Exporter
+After=nats-server.service
+
+[Service]
+Type=simple
+DynamicUser=true
+ExecStart=/usr/local/bin/prometheus-nats-exporter -addr 127.0.0.1 -port 7777 -varz -connz -healthz -accstatz -jsz=all http://127.0.0.1:8222
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 ### 启动
 
 ```bash
-sudo docker compose up -d --wait
+sudo systemctl daemon-reload
+sudo systemctl enable --now nats-server prometheus-nats-exporter
 curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 ```
+
+修改 `nats.conf` 后热加载：
+
+```bash
+sudo systemctl reload nats-server
+# 成功时最后一行是 Reloaded server configuration；出现 not supported 时 sudo systemctl restart nats-server
+journalctl -u nats-server -n 3 --no-pager
+```
+
+语法检查不通过时 `reload` 报错并保持原配置运行，原因在 `journalctl -u nats-server` 中。
 
 ## 应用配置
 
@@ -155,22 +180,16 @@ nats:
 
 ## 命令行
 
-`nats` 是 NATS 官方的命令行工具，用来查看和操作 NATS：看某个账号的 stream 和积压、暂停 topic、迁移时备份和恢复，以及查看整台服务器的状态。它装在 `cli` 容器中，进入容器后使用，下文的 `nats` 命令都在容器中执行：
+`nats` 是 NATS 官方的命令行工具，用来查看和操作 NATS：看某个账号的 stream 和积压、暂停 topic、迁移时备份和恢复，以及查看整台服务器的状态。它装在 NATS 服务器上，用登录服务器的普通用户执行：
 
-```bash
-sudo docker compose run --rm cli
-```
-
-1. 保存登录信息。命令行和应用一样，要用 `config/nats.conf` 中的某个用户连接 NATS，并且只能看到这个用户所属账号里的东西：用账号 `A` 的用户 `a` 连接，只能操作 `A` 的 stream 和 consumer；查看整台服务器要用系统账号 `SYS` 的用户 `admin`。把每个要用的用户保存一次，起个名字，这叫 context，存在 `cli/` 中：
+1. 保存登录信息。命令行和应用一样，要用 `/etc/nats/nats.conf` 中的某个用户连接 NATS，并且只能看到这个用户所属账号里的东西：用账号 `A` 的用户 `a` 连接，只能操作 `A` 的 stream 和 consumer；查看整台服务器要用系统账号 `SYS` 的用户 `admin`。把每个要用的用户保存一次，起个名字，这叫 context，存在 `~/.config/nats/` 中（含密码）：
 
    ```bash
    # 名字 sys：系统账号 SYS 的用户 admin
-   nats context add sys --server nats://server:4222 --user admin --password <admin 的密码>
+   nats context add sys --server nats://127.0.0.1:4222 --user admin --password <admin 的密码>
    # 名字 a：账号 A 的用户 a
-   nats context add a --server nats://server:4222 --user a --password <a 的密码>
+   nats context add a --server nats://127.0.0.1:4222 --user a --password <a 的密码>
    ```
-
-   `nats://server:4222` 是 `cli` 容器访问 `server` 容器的地址。
 
 2. 操作时用 `--context` 选择以哪个用户的身份执行：
 
@@ -182,14 +201,14 @@ sudo docker compose run --rm cli
 
    下文的 `nats` 命令都按这个方式指定账号。
 
-`config/nats.conf` 中删掉一个账号后，在容器中用 `nats context rm <名字> -f` 删掉对应的 context。
+`/etc/nats/nats.conf` 中删掉一个账号后，用 `nats context rm <名字> -f` 删掉对应的 context。
 
 ## 运维
 
 状态：
 
 ```bash
-sudo docker compose ps                    # server 为 healthy
+systemctl status nats-server prometheus-nats-exporter    # 都是 active (running)
 nats --context a consumer report jobs     # 各 topic 的积压和处理中任务
 ```
 
@@ -200,15 +219,17 @@ nats --context a consumer pause jobs mail_send 1h
 nats --context a consumer resume jobs mail_send
 ```
 
-修改 `compose.yaml` 后执行 `sudo docker compose up -d --wait`；修改了 `nats.conf` 开头注释中列出的设置后执行 `sudo docker compose up -d --wait --force-recreate server`。
+日志：`journalctl -u nats-server -f`。
 
-升级：磁盘快照 → 修改 `compose.yaml` 中的镜像版本 → `sudo docker compose up -d --wait`。
+修改 unit 文件后执行 `sudo systemctl daemon-reload`，再 `sudo systemctl restart` 对应的服务；修改了 `nats.conf` 开头注释中列出的设置后执行 `sudo systemctl restart nats-server`。
+
+升级：磁盘快照 → 按 [程序](#程序) 下载新版本覆盖 `/usr/local/bin/nats-server` → `sudo systemctl restart nats-server` → 检查 healthz。
 
 ## 监控
 
 tenon 应用的指标由应用直接上报：`queue.relay.active` 所有实例之和为 0 时告警，另外关注 `queue.relay.lag` 和队列面板。
 
-NATS 和主机按 [OpenObserve 的 NATS 监控文档](https://openobserve.ai/blog/how-to-monitor-nats/) 接入：在服务器上安装 OpenObserve 的 agent（systemd 服务 `otel-collector`），它默认采集主机指标、journald（其中有 NATS 的日志）和 `/var/log`，再让它抓取 `exporter` 给出的 NATS 指标。
+NATS 和主机按 [OpenObserve 的 NATS 接入文档](https://openobserve.ai/docs/integration/message-brokers/nats/) 接入：在服务器上安装 OpenObserve 的 agent（systemd 服务 `otel-collector`），它默认采集主机指标、journald（其中有 NATS 的日志）和 `/var/log`，再让它抓取 `prometheus-nats-exporter`（`127.0.0.1:7777`）给出的 NATS 指标。
 
 在 OpenObserve 的 Data sources → Linux 中复制安装命令，形如：
 
@@ -253,22 +274,22 @@ sudo systemctl restart otel-collector
 
 worker 停止期间发布照常进行，新任务留在 PostgreSQL 中，worker 连上新 NATS 后自动转发；NATS 中已有的任务、定时消息和 consumer 进度通过备份恢复迁移。任务暂停处理的时长等于 worker 停止的时长。
 
-1. 按 [安装](#安装) 部署新服务器，`config/nats.conf` 的 `accounts` 只保留 `SYS` 和 `A`，`A` 的用户和密码与旧服务器相同。安全组放行应用服务器和旧服务器访问新服务器的 4222。
-2. 在旧服务器的 `cli` 容器中切换：
+1. 按 [安装](#安装) 部署新服务器，`/etc/nats/nats.conf` 的 `accounts` 只保留 `SYS` 和 `A`，`A` 的用户和密码与旧服务器相同。安全组放行应用服务器和旧服务器访问新服务器的 4222。
+2. 在旧服务器上切换：
 
    ```bash
    nats context add a_new --server nats://<新地址>:4222 --user a --password <密码>
    # 平滑停止使用这个账号的全部 worker（SIGTERM），发布进程不停；
    # worker 与 HTTP 在同一进程（start）时，期间改为只运行 serve 和 schedule
    nats --context a stream info jobs | grep Messages
-   nats --context a backup account backup/a -f
-   nats --context a_new backup restore account backup/a
+   nats --context a backup account ~/nats-backup/a -f
+   nats --context a_new backup restore account ~/nats-backup/a
    nats --context a_new stream info jobs | grep Messages  # 与上面旧服务器的数量相同
    # 应用的 nats.url 改为新服务器，启动 worker，重启其他使用 NATS 的进程
    nats --context a_new consumer report jobs
    ```
 
-3. 确认正常后立即清理旧服务器：在 `cli` 容器中执行 `nats --context a stream rm jobs -f`；从 `config/nats.conf` 中删掉 `A`，`make reload`；删掉 context `a`；在主机上 `sudo rm -rf data/jetstream/A backup/a`。不及时清理时，旧 stream 中的定时消息到时触发，误连旧服务器的 worker 会重复处理。
+3. 确认正常后立即清理旧服务器：`nats --context a stream rm jobs -f`；从 `/etc/nats/nats.conf` 中删掉 `A`，`sudo systemctl reload nats-server`；`nats context rm a -f`；`sudo rm -rf /var/lib/nats/jetstream/A ~/nats-backup/a`。不及时清理时，旧 stream 中的定时消息到时触发，误连旧服务器的 worker 会重复处理。
 
 回退：删除之前，`nats.url` 改回旧服务器，重启 worker。
 
@@ -276,7 +297,7 @@ worker 停止期间发布照常进行，新任务留在 PostgreSQL 中，worker 
 
 账号 B、C 中的应用调用账号 A 中的 natsrpc 端点时，直接连到 A 的账号。以 A 的前缀 `a.v1` 为例。
 
-在 `config/nats.conf` 的 A 中为每个调用方加一个用户，然后 `make reload`：
+在 `/etc/nats/nats.conf` 的 A 中为每个调用方加一个用户，然后 `sudo systemctl reload nats-server`：
 
 ```
       { user: rpc_b, password: "<密码>" }
