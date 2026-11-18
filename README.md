@@ -55,11 +55,10 @@ services:
       timeout: 3s
       retries: 3
 
-  # nats 命令行：docker compose run --rm cli <参数>
+  # nats 命令行：sudo docker compose run --rm cli 进入容器
   cli:
     image: natsio/nats-box:0.20.2
     profiles: [tools]
-    entrypoint: ["nats"]
     working_dir: /work
     volumes:
       - ./cli:/nsc/.config/nats # context，含密码
@@ -156,15 +155,13 @@ nats:
 
 ## 命令行
 
-`nats` 是 NATS 官方的命令行工具，用来查看和操作 NATS：看某个账号的 stream 和积压、暂停 topic、迁移时备份和恢复，以及查看整台服务器的状态。它在 `cli` 容器中运行。
+`nats` 是 NATS 官方的命令行工具，用来查看和操作 NATS：看某个账号的 stream 和积压、暂停 topic、迁移时备份和恢复，以及查看整台服务器的状态。它装在 `cli` 容器中，进入容器后使用，下文的 `nats` 命令都在容器中执行：
 
-1. 在 `nats` 目录中设置别名，之后在任何目录都能直接输入 `nats`：
+```bash
+sudo docker compose run --rm cli
+```
 
-   ```bash
-   echo "alias nats='sudo docker compose -f $PWD/compose.yaml run --rm -q --no-deps cli'" >> ~/.bashrc && . ~/.bashrc
-   ```
-
-2. 保存登录信息。命令行和应用一样，要用 `config/nats.conf` 中的某个用户连接 NATS，并且只能看到这个用户所属账号里的东西：用账号 `A` 的用户 `a` 连接，只能操作 `A` 的 stream 和 consumer；查看整台服务器要用系统账号 `SYS` 的用户 `admin`。把每个要用的用户保存一次，起个名字，这叫 context，存在 `cli/` 中：
+1. 保存登录信息。命令行和应用一样，要用 `config/nats.conf` 中的某个用户连接 NATS，并且只能看到这个用户所属账号里的东西：用账号 `A` 的用户 `a` 连接，只能操作 `A` 的 stream 和 consumer；查看整台服务器要用系统账号 `SYS` 的用户 `admin`。把每个要用的用户保存一次，起个名字，这叫 context，存在 `cli/` 中：
 
    ```bash
    # 名字 sys：系统账号 SYS 的用户 admin
@@ -175,7 +172,7 @@ nats:
 
    `nats://server:4222` 是 `cli` 容器访问 `server` 容器的地址。
 
-3. 操作时用 `--context` 选择以哪个用户的身份执行：
+2. 操作时用 `--context` 选择以哪个用户的身份执行：
 
    ```bash
    nats --context sys server report accounts     # 各账号的连接数和流量
@@ -210,11 +207,14 @@ nats:
    ```
 
 3. 从 `config/nats.conf` 中删掉这个账号，以及其他账号中导入它的 `imports`（语法检查要求导入的账号存在），`make reload`。
-4. 删除它的数据目录和 context：
+4. 在容器中删除它的 context，在主机上删除它的数据目录：
+
+   ```bash
+   nats context rm c -f
+   ```
 
    ```bash
    sudo rm -rf data/jetstream/C
-   nats context rm c -f
    ```
 
 ## 运维
@@ -287,7 +287,7 @@ sudo systemctl restart otel-collector
 worker 停止期间发布照常进行，新任务留在 PostgreSQL 中，worker 连上新 NATS 后自动转发；NATS 中已有的任务、定时消息和 consumer 进度通过备份恢复迁移。任务暂停处理的时长等于 worker 停止的时长。
 
 1. 按 [安装](#安装) 部署新服务器，`config/nats.conf` 的 `accounts` 只保留 `SYS` 和 `A`，`A` 的用户和密码与旧服务器相同。安全组放行应用服务器和旧服务器访问新服务器的 4222。
-2. 在旧服务器上切换：
+2. 在旧服务器的 `cli` 容器中切换：
 
    ```bash
    nats context add a_new --server nats://<新地址>:4222 --user a --password <密码>
@@ -301,7 +301,7 @@ worker 停止期间发布照常进行，新任务留在 PostgreSQL 中，worker 
    nats --context a_new consumer report jobs
    ```
 
-3. 确认正常后立即按 [删除账号](#删除账号) 从旧服务器删掉 `A`，再 `sudo rm -rf backup/a`。不及时删除时，旧 stream 中的定时消息到时触发，误连旧服务器的 worker 会重复处理。
+3. 确认正常后立即按 [删除账号](#删除账号) 从旧服务器删掉 `A`，再在主机上 `sudo rm -rf backup/a`。不及时删除时，旧 stream 中的定时消息到时触发，误连旧服务器的 worker 会重复处理。
 
 回退：删除之前，`nats.url` 改回旧服务器，重启 worker。
 
