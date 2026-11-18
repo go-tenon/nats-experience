@@ -1,6 +1,6 @@
 # NATS 部署与运维
 
-多产品共用的单机 NATS（JetStream），供 tenon 的队列、广播、实时频道和 RPC 使用。用 Docker Compose 运行，只有 `compose.yaml` 和 `nats.conf` 两个文件；每个产品一个账号，账号和密码写在 `nats.conf` 中，增删账号不用重启；某个产品流量变大后迁到单独的 NATS。
+多产品共用的单机 NATS（JetStream），供 tenon 的队列、广播、实时频道和 RPC 使用。用 Docker Compose 运行，只有 `compose.yaml` 和 `config/nats.conf` 两个文件；每个产品一个账号，账号和密码写在 `nats.conf` 中，增删账号不用重启；某个产品流量变大后迁到单独的 NATS。
 
 ## 机器
 
@@ -23,7 +23,7 @@ Ubuntu x86_64，装好 Docker 和 Docker Compose。2 核 2G 起，ESSD 并开启
 新建一个 `nats` 目录，放在哪里都可以。下文的文件和命令都在这个目录中：
 
 ```bash
-mkdir nats && cd nats
+mkdir -p nats/config && cd nats
 ```
 
 ### compose.yaml
@@ -40,7 +40,7 @@ services:
       - "4222:4222"           # 客户端，访问来源由云平台安全组控制
       - "127.0.0.1:8222:8222" # 监控，只给本机
     volumes:
-      - .:/etc/nats:ro        # 挂载目录：编辑 nats.conf 后，重新加载能读到新内容
+      - ./config:/etc/nats:ro # 挂载目录而不是单个文件：编辑器换掉文件后，重新加载也能读到新内容
       - ./data:/data
     environment:
       GOMEMLIMIT: 1200MiB     # 内存的 60–80%
@@ -78,7 +78,7 @@ services:
     depends_on: [nats]
 ```
 
-### nats.conf
+### config/nats.conf
 
 把 `PRODUCT_A`、`product_a` 换成产品的名字，每个 `<密码>` 换成 `openssl rand -hex 24` 生成的不同的随机串：
 
@@ -120,7 +120,7 @@ accounts {
 }
 ```
 
-需要更多产品时照着加一段，见 [01 账号](docs/01-accounts.md)。文件中有密码，保存后执行 `chmod 600 nats.conf`。
+需要更多产品时照着加一段，见 [01 账号](docs/01-accounts.md)。文件中有密码，保存后执行 `chmod 600 config/nats.conf`。
 
 ### 启动
 
@@ -132,7 +132,7 @@ curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 - 4222 对外监听，在云平台安全组中只放行应用服务器。
 - 8222（监控）只映射到本机。
 
-`nats.conf` 中的设置：
+`config/nats.conf` 中的设置：
 
 | 项目 | 说明 |
 |---|---|
@@ -149,7 +149,7 @@ nats:
   url: nats://product_a:<密码>@<NATS 地址>:4222
 ```
 
-`<密码>` 是 `nats.conf` 中这个用户的密码，应用的配置文件权限设为 600。
+`<密码>` 是 `config/nats.conf` 中这个用户的密码，应用的配置文件权限设为 600。
 
 `jobs.>`（`queue.stream` 的 subject 范围）只给队列用。不要给 `jobs` stream 设置 `max_age`，容量上限配合 `discard: new`：否则会删掉还没执行的延迟任务，worker 发现时拒绝启动。
 

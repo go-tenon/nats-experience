@@ -6,7 +6,7 @@ worker 停止期间发布照常进行，新任务留在 PostgreSQL 中，worker 
 
 ## 1. 准备新服务器
 
-1. 按 [安装](../README.md#安装) 部署。`nats.conf` 的 `accounts` 只保留 `SYS` 和 `PRODUCT_A` 两段，`PRODUCT_A` 的用户和密码与旧服务器相同。
+1. 按 [安装](../README.md#安装) 部署。`config/nats.conf` 的 `accounts` 只保留 `SYS` 和 `PRODUCT_A` 两段，`PRODUCT_A` 的用户和密码与旧服务器相同。
 2. 安全组放行应用服务器和旧服务器访问新服务器的 4222。
 3. 在旧服务器上为新服务器建一个 context：
 
@@ -41,7 +41,7 @@ sudo rm -rf backup/product_a
 nats context rm product_a -f
 ```
 
-再按 [删除产品](01-accounts.md#删除产品) 从 `nats.conf` 中删掉 `PRODUCT_A`。
+再按 [删除产品](01-accounts.md#删除产品) 从 `config/nats.conf` 中删掉 `PRODUCT_A`。
 
 ## 回退
 

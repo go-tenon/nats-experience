@@ -6,7 +6,7 @@ NATS 的导出、导入决定请求能否送到 A；natsrpc 的 token 和端点�
 
 ## 同一台 NATS：导出和导入
 
-在 `nats.conf` 的 `accounts` 中，A 导出一次，每个调用方导入，然后[重新加载](02-operations.md#修改配置)：
+在 `config/nats.conf` 的 `accounts` 中，A 导出一次，每个调用方导入，然后[重新加载](02-operations.md#修改配置)：
 
 ```
   PRODUCT_A {
