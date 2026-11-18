@@ -20,11 +20,18 @@ Ubuntu x86_64，装好 Docker 和 Docker Compose。2 核 2G 起，ESSD 并开启
 
 ## 安装
 
-新建一个 `nats` 目录，放在哪里都可以。下文的文件和命令都在这个目录中：
+新建一个 `nats` 目录，放在哪里都可以，连同 `compose.yaml` 挂载的子目录一起创建。下文的文件和命令都在这个目录中：
 
 ```bash
-mkdir -p nats/config && cd nats
+mkdir -p nats/{config,data,cli,backup} && cd nats
 ```
+
+| 目录 | 内容 |
+|---|---|
+| `config/` | `nats.conf` |
+| `data/` | JetStream 的数据 |
+| `cli/` | 命令行的 context（含密码） |
+| `backup/` | 迁移时的备份 |
 
 ### compose.yaml
 
@@ -140,7 +147,7 @@ curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 | `max_file_store: 30GB` | 所有账号合计的磁盘上限。账号不设配额 |
 | `max_memory_store: 256MB` | 实时频道的在线成员使用内存存储 |
 
-`nats` 目录中会出现这些子目录：`data/` 是 JetStream 的数据，`cli/` 是命令行的 context（含密码），`backup/` 是迁移时的备份。日志写入 systemd 日志（journald），用 `sudo docker compose logs nats` 或 `journalctl -t nats` 查看，保留多久由 journald 的设置决定。
+日志写入 systemd 日志（journald），用 `sudo docker compose logs nats` 或 `journalctl -t nats` 查看，保留多久由 journald 的设置决定。
 
 ## 应用配置
 
