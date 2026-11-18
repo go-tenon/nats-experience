@@ -275,14 +275,14 @@ sudo systemctl restart otel-collector
 
 在 Dashboards → Import 中导入官方看板 [nats_dashboard.json](https://openobserve-prod-website.s3.us-west-2.amazonaws.com/assets/nats_dashboard_c317f090bb.json)。告警：
 
-| 指标或日志 | 条件 |
+| OpenObserve 中的 stream | 条件 |
 |---|---|
 | `jetstream_consumer_num_pending` | 持续增长（按 `account_name`、`consumer_name` 区分账号和 topic） |
 | `jetstream_server_total_message_bytes` | 超过 `jetstream_server_max_storage` 的 80% |
 | `gnatsd_healthz_status_value` | 为 0，或停止上报 |
-| `system.memory.utilization` | 超过 80%（定时消息占用内存） |
-| `system.filesystem.utilization` | 数据盘超过 80% |
-| journald 中 `SYSLOG_IDENTIFIER` 为 `nats` 的日志 | 出现 `[ERR]` |
+| `system_memory_utilization` | `state` 为 `used` 的值大于 0.8（定时消息占用内存） |
+| `system_filesystem_utilization` | 数据盘所在 `mountpoint` 的值大于 0.8 |
+| `journald`（日志） | `body_syslog_identifier` 为 `nats`，且 `body_message` 含 `[ERR]` |
 
 ## 迁移
 
