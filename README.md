@@ -258,9 +258,9 @@ sudo /usr/local/bin/otelcol-contrib validate --config /etc/otel-config.yaml
 sudo systemctl restart otel-collector
 ```
 
-在 Dashboards → Import 中导入官方看板 [nats_dashboard.json](https://openobserve-prod-website.s3.us-west-2.amazonaws.com/assets/nats_dashboard_c317f090bb.json)。`-connz_detailed` 让 exporter 为每条在线客户端连接输出空闲时长指标 `gnatsd_connz_idle`，供 Idle connections 面板查询。没有客户端在线时，面板可能暂无数据。
+在 Dashboards → Import 中导入官方看板 [nats_dashboard.json](https://openobserve-prod-website.s3.us-west-2.amazonaws.com/assets/nats_dashboard_c317f090bb.json)。
 
-验证时，可在一个终端运行 `nats --context a sub monitoring.test.idle` 保持连接，再在另一个终端检查 exporter：
+验证 Idle connections 面板时，可在一个终端运行 `nats --context a sub monitoring.test.idle` 保持连接，再在另一个终端检查 exporter：
 
 ```bash
 curl -fsS http://127.0.0.1:7777/metrics | grep '^gnatsd_connz_idle{'
@@ -291,7 +291,7 @@ or on (host_name)
 absent_over_time(gnatsd_healthz_status_value{host_name="nats"}[3m])
 ```
 
-两条规则共用 `telegram-host-warning`，重复通知的静默时间为 15 分钟。条件解除后继续保持告警状态 2 分钟，恢复通知发往 `telegram-host-recovery`。
+按实际部署选择告警和恢复通知渠道。两条规则的重复通知静默时间为 15 分钟，条件解除后继续保持告警状态 2 分钟，再发送恢复通知。
 
 CPU、内存和磁盘沿用通用主机告警。CPU 使用率 ≥ 80%，内存使用率（`state="used"`）≥ 75%。当前 `/var/lib/nats` 位于根分区 `/`，磁盘沿用通用的 **70%** 告警，即 `system_filesystem_utilization{mountpoint="/"}` 换算成百分比后达到或超过 70%。如果日后把 JetStream 数据移到独立挂载点，需给该挂载点配置磁盘告警。
 
