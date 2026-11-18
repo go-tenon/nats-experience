@@ -57,7 +57,7 @@ services:
       timeout: 3s
       retries: 3
 
-  # nats 命令行，见下文「命令行」
+  # nats 命令行：docker compose run --rm cli <参数>
   cli:
     image: natsio/nats-box:0.20.2
     profiles: [tools]
@@ -68,7 +68,7 @@ services:
       - ./backup:/work/backup   # 迁移时的备份
     depends_on: [nats]
 
-  # NATS 的指标转成 Prometheus 格式，由主机上的 OpenObserve agent 抓取，见下文「监控」
+  # NATS 的指标转成 Prometheus 格式，由主机上的 OpenObserve agent 抓取
   exporter:
     image: natsio/prometheus-nats-exporter:0.20.3
     command: ["-varz", "-connz", "-healthz", "-accstatz", "-jsz=all", "http://nats:8222"]
