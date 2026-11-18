@@ -20,15 +20,13 @@ Ubuntu x86_64，装好 Docker 和 Docker Compose。2 核 2G 起，ESSD 并开启
 
 ## 安装
 
-所有文件放在 `/opt/nats` 中：
+新建一个 `nats` 目录，放在哪里都可以。下文的文件和命令都在这个目录中：
 
 ```bash
-sudo mkdir -p /opt/nats && cd /opt/nats
+mkdir nats && cd nats
 ```
 
 ### compose.yaml
-
-`sudo vim compose.yaml`：
 
 ```yaml
 name: nats
@@ -42,7 +40,7 @@ services:
       - "4222:4222"           # 客户端，访问来源由云平台安全组控制
       - "127.0.0.1:8222:8222" # 监控，只给本机
     volumes:
-      - .:/etc/nats:ro        # 挂载目录：vim 保存 nats.conf 后，重新加载能读到新内容
+      - .:/etc/nats:ro        # 挂载目录：编辑 nats.conf 后，重新加载能读到新内容
       - ./data:/data
     environment:
       GOMEMLIMIT: 1200MiB     # 内存的 60–80%
@@ -113,11 +111,11 @@ configs:
             exporters: [otlphttp/openobserve]
 ```
 
-把 `<OpenObserve 地址>`、`<组织>`、`<令牌>` 换成实际的值，见 [04 接入 OpenObserve](docs/04-openobserve.md)。文件中有令牌，保存后执行 `sudo chmod 600 compose.yaml`。
+把 `<OpenObserve 地址>`、`<组织>`、`<令牌>` 换成实际的值，见 [04 接入 OpenObserve](docs/04-openobserve.md)。文件中有令牌，保存后执行 `chmod 600 compose.yaml`。
 
 ### nats.conf
 
-`sudo vim nats.conf`，把 `PRODUCT_A`、`product_a` 换成产品的名字，每个 `<密码>` 换成 `openssl rand -hex 24` 生成的不同的随机串：
+把 `PRODUCT_A`、`product_a` 换成产品的名字，每个 `<密码>` 换成 `openssl rand -hex 24` 生成的不同的随机串：
 
 ```
 # 修改后执行 docker compose kill -s HUP nats 重新加载，不中断连接；server_name 不能热加载
@@ -157,7 +155,7 @@ accounts {
 }
 ```
 
-需要更多产品时照着加一段，见 [01 账号](docs/01-accounts.md)。文件中有密码，保存后执行 `sudo chmod 600 nats.conf`。
+需要更多产品时照着加一段，见 [01 账号](docs/01-accounts.md)。文件中有密码，保存后执行 `chmod 600 nats.conf`。
 
 ### 启动
 
@@ -177,7 +175,7 @@ curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 | `max_file_store: 30GB` | 所有账号合计的磁盘上限。账号不设配额 |
 | `max_memory_store: 256MB` | 实时频道的在线成员使用内存存储 |
 
-`/opt/nats` 中会出现这些目录：`data/` 是 JetStream 的数据，`cli/` 是命令行的 context（含密码），`backup/` 是迁移时的备份。日志用 `sudo docker compose logs nats` 查看，单个文件 100MB，保留 10 个。
+`nats` 目录中会出现这些子目录：`data/` 是 JetStream 的数据，`cli/` 是命令行的 context（含密码），`backup/` 是迁移时的备份。日志用 `sudo docker compose logs nats` 查看，单个文件 100MB，保留 10 个。
 
 ## 应用配置
 

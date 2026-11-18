@@ -2,10 +2,9 @@
 
 每个产品一个账号。账号之间 subject、stream、凭据隔离；磁盘、CPU、IO 共用，某个产品影响其他产品时按 [03 迁移](03-migration.md) 迁出。同一产品的测试和正式环境用两个账号。
 
-账号和用户都写在 `/opt/nats/nats.conf` 的 `accounts` 中，用 `sudo vim nats.conf` 修改。修改后检查语法，再通知 NATS 重新加载：
+命令都在 `nats` 目录中执行。账号和用户都写在 `nats.conf` 的 `accounts` 中。修改后检查语法，再通知 NATS 重新加载：
 
 ```bash
-cd /opt/nats
 sudo docker compose exec nats nats-server -t -c /etc/nats/nats.conf   # configuration file ... is valid
 sudo docker compose kill -s HUP nats
 sudo docker compose logs --tail 3 nats                               # Reloaded: accounts
@@ -54,7 +53,7 @@ nats --context product_c stream rm jobs -f
 从 `nats.conf` 中删掉这一段，重新加载，然后删除它的数据目录和 context：
 
 ```bash
-sudo rm -rf /opt/nats/data/jetstream/PRODUCT_C
+sudo rm -rf data/jetstream/PRODUCT_C
 nats context rm product_c -f
 ```
 

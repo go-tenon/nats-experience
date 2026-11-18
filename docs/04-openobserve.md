@@ -12,7 +12,6 @@ otelcol 的采集配置写在 `compose.yaml` 末尾的 `configs.otelcol` 中，�
 修改后重建 otelcol：只改 `configs` 的内容时，`docker compose up -d` 不会重建容器，要加 `--force-recreate`。
 
 ```bash
-cd /opt/nats
 sudo docker compose up -d --force-recreate otelcol
 sudo docker compose logs --tail 20 otelcol          # Everything is ready
 ```

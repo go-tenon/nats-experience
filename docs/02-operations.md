@@ -1,13 +1,13 @@
 # 02 运维
 
-命令都在 `/opt/nats` 中执行。
+命令都在 `nats` 目录中执行。
 
 ## 命令行
 
-`nats` 命令行在 `cli` 容器中运行，不用安装。设置别名：
+`nats` 命令行在 `cli` 容器中运行，不用安装。在 `nats` 目录中设置别名，之后在任何目录都能用：
 
 ```bash
-echo "alias nats='sudo docker compose -f /opt/nats/compose.yaml run --rm -q cli'" >> ~/.bashrc && . ~/.bashrc
+echo "alias nats='sudo docker compose -f $PWD/compose.yaml run --rm -q cli'" >> ~/.bashrc && . ~/.bashrc
 ```
 
 为系统账号和每个产品各建一个 context，密码见 `nats.conf`。context 保存在 `cli/` 中，只需建一次：

@@ -37,7 +37,7 @@ worker 与 HTTP 在同一进程（`start`）时，停 worker 期间改为只运�
 ```bash
 nats --context product_a stream ls                 # 逐个删除
 nats --context product_a stream rm jobs -f
-sudo rm -rf /opt/nats/backup/product_a
+sudo rm -rf backup/product_a
 nats context rm product_a -f
 ```
 
