@@ -260,13 +260,6 @@ sudo systemctl restart otel-collector
 
 在 Dashboards → Import 中导入官方看板 [nats_dashboard.json](https://openobserve-prod-website.s3.us-west-2.amazonaws.com/assets/nats_dashboard_c317f090bb.json)。`-connz_detailed` 让 exporter 为每条在线客户端连接输出空闲时长指标 `gnatsd_connz_idle`，供 Idle connections 面板查询。没有客户端在线时，面板可能暂无数据。
 
-已有部署把 exporter 的 `ExecStart` 中的 `-connz` 换成 `-connz_detailed` 后，重新加载 unit 并重启 exporter：
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart prometheus-nats-exporter
-```
-
 验证时，可在一个终端运行 `nats --context a sub monitoring.test.idle` 保持连接，再在另一个终端检查 exporter：
 
 ```bash
