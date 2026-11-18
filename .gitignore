@@ -1,5 +1,0 @@
-config/accounts.conf
-.env
-data/
-cli/
-backup/

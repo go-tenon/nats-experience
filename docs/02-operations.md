@@ -10,7 +10,7 @@
 echo "alias nats='sudo docker compose -f /opt/nats/compose.yaml run --rm -q cli'" >> ~/.bashrc && . ~/.bashrc
 ```
 
-为系统账号和每个产品各建一个 context，密码见 `config/accounts.conf`。context 保存在 `cli/` 中，只需建一次：
+为系统账号和每个产品各建一个 context，密码见 `nats.conf`。context 保存在 `cli/` 中，只需建一次：
 
 ```bash
 nats context add sys --server nats://nats:4222 --user admin --password <密码>
@@ -41,7 +41,7 @@ tenon 队列面板也可以暂停和恢复。
 
 ## 修改配置
 
-`config/nats.conf` 和 `config/accounts.conf` 修改后检查语法，再重新加载，不中断连接：
+`nats.conf` 修改后检查语法，再重新加载，不中断连接：
 
 ```bash
 sudo docker compose exec nats nats-server -t -c /etc/nats/nats.conf
@@ -49,7 +49,7 @@ sudo docker compose kill -s HUP nats
 sudo docker compose logs --tail 3 nats
 ```
 
-`server_name` 和监听地址不能热加载，修改后执行 `sudo docker compose up -d --force-recreate nats`。`compose.yaml` 和 `.env` 修改后执行 `sudo docker compose up -d`。
+`server_name` 和监听地址不能热加载，修改后执行 `sudo docker compose up -d --force-recreate nats`。`compose.yaml` 修改后执行 `sudo docker compose up -d`。
 
 ## 升级
 
@@ -57,8 +57,8 @@ sudo docker compose logs --tail 3 nats
 
 ## 备份
 
-- 磁盘自动快照，每天一次，包括 `data/` 和配置。
-- `config/accounts.conf` 中是所有产品的密码，另外保存到离线或加密存储。
+- 磁盘自动快照，每天一次，包括 `data/` 和两个文件。
+- `nats.conf` 中是所有产品的密码，另外保存到离线或加密存储。
 
 ## 监控
 
