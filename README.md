@@ -159,31 +159,40 @@ nats:
 
 ## 命令行
 
-`nats` 命令行在 `cli` 容器中运行，不用安装。在 `nats` 目录中设置别名，之后在任何目录都能用：
+`nats` 是 NATS 官方的命令行工具，用来查看和操作 NATS：看某个账号的 stream 和积压、暂停 topic、迁移时备份和恢复，以及查看整台服务器的状态。它在 `cli` 容器中运行，不用安装。
 
-```bash
-echo "alias nats='sudo docker compose -f $PWD/compose.yaml run --rm -q cli'" >> ~/.bashrc && . ~/.bashrc
-```
+1. 在 `nats` 目录中设置别名，之后在任何目录都能直接输入 `nats`：
 
-为系统账号和其他每个账号各建一个 context，只需建一次：
+   ```bash
+   echo "alias nats='sudo docker compose -f $PWD/compose.yaml run --rm -q cli'" >> ~/.bashrc && . ~/.bashrc
+   ```
 
-```bash
-nats context add sys --server nats://nats:4222 --user admin --password <密码>
-nats context add a --server nats://nats:4222 --user a --password <密码>
-```
+2. 保存登录信息。命令行和应用一样，要用 `config/nats.conf` 中的某个用户连接 NATS，并且只能看到这个用户所属账号里的东西：用账号 `A` 的用户 `a` 连接，只能操作 `A` 的 stream 和 consumer；查看整台服务器要用系统账号 `SYS` 的用户 `admin`。把每个要用的用户保存一次，起个名字，这叫 context，存在 `cli/` 中：
+
+   ```bash
+   # 名字 sys：系统账号 SYS 的用户 admin
+   nats context add sys --server nats://nats:4222 --user admin --password <admin 的密码>
+   # 名字 a：账号 A 的用户 a
+   nats context add a --server nats://nats:4222 --user a --password <a 的密码>
+   ```
+
+   `nats://nats:4222` 是 `cli` 容器访问 `nats` 容器的地址。新增账号后也照这样保存一个。
+
+3. 操作时用 `--context` 选择以哪个用户的身份执行：
+
+   ```bash
+   nats --context sys server report accounts     # 各账号的连接数和流量
+   nats --context sys server report jetstream    # 各账号的 stream 数、消息数和存储
+   nats --context a stream ls                    # 账号 A 中的 stream
+   ```
+
+   下文的 `nats` 命令都按这个方式指定账号。
 
 ## 账号
 
 账号之间 subject、stream、凭据隔离；磁盘、CPU、IO 共用，某个账号影响其他账号时按 [迁移](#迁移) 迁出。同一项目的测试和正式环境用两个账号。
 
 一个账号下的多个应用各用一个用户，便于单独吊销。吊销（凭据泄露、停用）：删掉这个用户，`make reload`，使用它的连接立即断开，重连被拒绝。换密码同理，改完再更新应用的配置。
-
-查看：
-
-```bash
-nats --context sys server report accounts
-nats --context sys server report jetstream
-```
 
 ### 删除账号
 
