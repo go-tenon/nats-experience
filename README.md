@@ -291,7 +291,7 @@ or on (host_name)
 absent_over_time(gnatsd_healthz_status_value{host_name="nats"}[3m])
 ```
 
-两条规则共用 `telegram-host-warning`，重复通知的静默时间为 15 分钟。条件解除后继续保持告警状态 2 分钟，恢复通知发往 `telegram-host-recovery`。
+按实际部署选择告警和恢复通知渠道。两条规则的重复通知静默时间为 15 分钟，条件解除后继续保持告警状态 2 分钟，再发送恢复通知。
 
 CPU、内存和磁盘沿用通用主机告警。CPU 使用率 ≥ 80%，内存使用率（`state="used"`）≥ 75%。当前 `/var/lib/nats` 位于根分区 `/`，磁盘沿用通用的 **70%** 告警，即 `system_filesystem_utilization{mountpoint="/"}` 换算成百分比后达到或超过 70%。如果日后把 JetStream 数据移到独立挂载点，需给该挂载点配置磁盘告警。
 
