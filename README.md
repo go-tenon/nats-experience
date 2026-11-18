@@ -182,40 +182,7 @@ sudo docker compose run --rm cli
 
    下文的 `nats` 命令都按这个方式指定账号。
 
-## 账号
-
-账号之间 subject、stream、凭据隔离；磁盘、CPU、IO 共用，某个账号影响其他账号时按 [迁移](#迁移) 迁出。同一项目的测试和正式环境用两个账号。
-
-一个账号下的多个应用各用一个用户，便于单独吊销。吊销（凭据泄露、停用）：删掉这个用户，`make reload`，使用它的连接立即断开，重连被拒绝。
-
-换密码也会让用旧密码的连接立即断开。不想中断时，先加一个新用户（例如 `a2`），`make reload`，应用改用新用户并重启，再删掉旧用户，`make reload`。
-
-### 新增账号
-
-1. 在 `config/nats.conf` 的 `accounts` 中照着 `A` 加一段，`make reload`。
-2. 按 [命令行](#命令行) 为它保存 context。
-3. 应用按 [应用配置](#应用配置) 连接。
-
-### 删除账号
-
-1. 停掉使用这个账号的应用（worker 启动时会建 stream）。
-2. 逐个删除账号中的 stream：
-
-   ```bash
-   nats --context c stream ls
-   nats --context c stream rm jobs -f
-   ```
-
-3. 从 `config/nats.conf` 中删掉这个账号，以及其他账号中导入它的 `imports`（语法检查要求导入的账号存在），`make reload`。
-4. 在容器中删除它的 context，在主机上删除它的数据目录：
-
-   ```bash
-   nats context rm c -f
-   ```
-
-   ```bash
-   sudo rm -rf data/jetstream/C
-   ```
+`config/nats.conf` 中删掉一个账号后，在容器中用 `nats context rm <名字> -f` 删掉对应的 context。
 
 ## 运维
 
@@ -301,7 +268,7 @@ worker 停止期间发布照常进行，新任务留在 PostgreSQL 中，worker 
    nats --context a_new consumer report jobs
    ```
 
-3. 确认正常后立即按 [删除账号](#删除账号) 从旧服务器删掉 `A`，再在主机上 `sudo rm -rf backup/a`。不及时删除时，旧 stream 中的定时消息到时触发，误连旧服务器的 worker 会重复处理。
+3. 确认正常后立即清理旧服务器：在 `cli` 容器中执行 `nats --context a stream rm jobs -f`；从 `config/nats.conf` 中删掉 `A`，`make reload`；删掉 context `a`；在主机上 `sudo rm -rf data/jetstream/A backup/a`。不及时清理时，旧 stream 中的定时消息到时触发，误连旧服务器的 worker 会重复处理。
 
 回退：删除之前，`nats.url` 改回旧服务器，重启 worker。
 
