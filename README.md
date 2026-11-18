@@ -145,8 +145,6 @@ sudo docker compose up -d --wait
 curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 ```
 
-在云平台安全组中只放行应用服务器访问 4222。日志用 `sudo docker compose logs server` 或 `journalctl -t nats` 查看。
-
 ## 应用配置
 
 ```yaml
