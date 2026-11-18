@@ -28,8 +28,9 @@ sudo mkdir -p /opt/nats && cd /opt/nats
 
 ### compose.yaml
 
-```bash
-sudo tee compose.yaml >/dev/null <<'EOF'
+`sudo vim compose.yaml`：
+
+```yaml
 name: nats
 
 services:
@@ -68,15 +69,13 @@ services:
       - ./cli:/nsc/.config/nats # context，含密码
       - ./backup:/work/backup   # 迁移时的备份
     depends_on: [nats]
-EOF
 ```
 
 ### nats.conf
 
-命令中的 `$(openssl rand -hex 24)` 为每个用户生成不同的随机密码：
+`sudo vim nats.conf`，把 `PRODUCT_A`、`product_a` 换成产品的名字，每个 `<密码>` 换成 `openssl rand -hex 24` 生成的不同的随机串：
 
-```bash
-sudo tee nats.conf >/dev/null <<EOF
+```
 # 修改后执行 docker compose kill -s HUP nats 重新加载，不中断连接；server_name 不能热加载
 server_name: nats-1
 
@@ -101,22 +100,20 @@ accounts {
   # 系统账号：查看服务器状态
   SYS {
     users = [
-      { user: admin, password: "$(openssl rand -hex 24)" }
+      { user: admin, password: "<密码>" }
     ]
   }
 
   PRODUCT_A {
     jetstream: enabled
     users = [
-      { user: product_a, password: "$(openssl rand -hex 24)" }
+      { user: product_a, password: "<密码>" }
     ]
   }
 }
-EOF
-sudo chmod 600 nats.conf
 ```
 
-用 `sudo vim nats.conf` 把 `PRODUCT_A`、`product_a` 改成产品的名字，需要更多产品时照着加一段，见 [01 账号](docs/01-accounts.md)。
+需要更多产品时照着加一段，见 [01 账号](docs/01-accounts.md)。文件中有密码，保存后执行 `sudo chmod 600 nats.conf`。
 
 ### 启动
 

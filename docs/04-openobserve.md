@@ -6,10 +6,9 @@
 
 ## 采集配置
 
-创建 `otelcol.yaml`，然后用 `sudo vim otelcol.yaml` 填上 OpenObserve 的地址和令牌：
+`sudo vim otelcol.yaml`，填上 OpenObserve 的地址和令牌：
 
-```bash
-sudo tee otelcol.yaml >/dev/null <<'EOF'
+```yaml
 receivers:
   prometheus:
     config:
@@ -35,8 +34,12 @@ service:
       receivers: [prometheus]
       processors: [batch]
       exporters: [otlphttp/openobserve]
-EOF
-sudo chown 10001:10001 otelcol.yaml && sudo chmod 600 otelcol.yaml   # otelcol 容器以用户 10001 运行
+```
+
+文件中有令牌，保存后只给 otelcol 容器的用户（10001）读取：
+
+```bash
+sudo chown 10001:10001 otelcol.yaml && sudo chmod 600 otelcol.yaml
 ```
 
 `<令牌>` 是 OpenObserve 中 Data sources → Custom → Logs → OTEL Collector 给出的 `Basic` 后面的部分。
