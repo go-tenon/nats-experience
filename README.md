@@ -144,7 +144,7 @@ After=nats-server.service
 [Service]
 Type=simple
 DynamicUser=true
-ExecStart=/usr/local/bin/prometheus-nats-exporter -addr 127.0.0.1 -port 7777 -varz -connz -healthz -accstatz -jsz=all http://127.0.0.1:8222
+ExecStart=/usr/local/bin/prometheus-nats-exporter -addr 127.0.0.1 -port 7777 -varz -connz_detailed -healthz -accstatz -jsz=all http://127.0.0.1:8222
 Restart=always
 RestartSec=5
 
@@ -258,7 +258,24 @@ sudo /usr/local/bin/otelcol-contrib validate --config /etc/otel-config.yaml
 sudo systemctl restart otel-collector
 ```
 
-在 Dashboards → Import 中导入官方看板 [nats_dashboard.json](https://openobserve-prod-website.s3.us-west-2.amazonaws.com/assets/nats_dashboard_c317f090bb.json)，其中 Idle connections 面板没有数据（exporter 不输出 `gnatsd_connz_idle`）。告警：
+在 Dashboards → Import 中导入官方看板 [nats_dashboard.json](https://openobserve-prod-website.s3.us-west-2.amazonaws.com/assets/nats_dashboard_c317f090bb.json)。`-connz_detailed` 让 exporter 为每条在线客户端连接输出空闲时长指标 `gnatsd_connz_idle`，供 Idle connections 面板查询。没有客户端在线时，面板可能暂无数据。
+
+已有部署把 exporter 的 `ExecStart` 中的 `-connz` 换成 `-connz_detailed` 后，重新加载 unit 并重启 exporter：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart prometheus-nats-exporter
+```
+
+验证时，可在一个终端运行 `nats --context a sub monitoring.test.idle` 保持连接，再在另一个终端检查 exporter：
+
+```bash
+curl -fsS http://127.0.0.1:7777/metrics | grep '^gnatsd_connz_idle{'
+```
+
+查到样本后，等 agent 下一轮抓取，再刷新看板。验证结束后按 `Ctrl+C` 断开测试订阅。
+
+告警：
 
 | OpenObserve 中的 stream | 条件 |
 |---|---|
