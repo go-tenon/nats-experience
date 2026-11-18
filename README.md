@@ -27,6 +27,7 @@ Ubuntu x86_64。2 核 2G 起，ESSD 并开启每天自动快照（JetStream 数�
 下载 NATS、`nats` 命令行和指标导出器，创建运行 NATS 的用户和目录：
 
 ```bash
+sudo apt-get update && sudo apt-get install -y unzip
 cd /tmp
 curl -fsSLO https://github.com/nats-io/nats-server/releases/download/v2.15.3/nats-server-v2.15.3-linux-amd64.tar.gz
 curl -fsSLO https://github.com/nats-io/natscli/releases/download/v0.5.2/nats-0.5.2-linux-amd64.zip
@@ -162,12 +163,12 @@ curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 修改 `nats.conf` 后热加载：
 
 ```bash
-sudo systemctl reload nats-server
-# 成功时最后一行是 Reloaded server configuration；出现 not supported 时 sudo systemctl restart nats-server
-journalctl -u nats-server -n 3 --no-pager
+sudo systemctl reload nats-server && sleep 1
+# 成功时有 Reloaded server configuration；出现 not supported 时 sudo systemctl restart nats-server
+journalctl -u nats-server -n 5 --no-pager -o cat
 ```
 
-语法检查不通过时 `reload` 报错并保持原配置运行，原因在 `journalctl -u nats-server` 中。
+语法检查不通过时 `reload` 报错（Job for nats-server.service failed），NATS 保持原配置运行，原因（Parse error）在 `journalctl -u nats-server` 中。
 
 ## 应用配置
 
