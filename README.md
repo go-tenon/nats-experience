@@ -153,8 +153,7 @@ sudo docker compose up -d --wait
 curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 ```
 
-- 4222 对外监听，在云平台安全组中只放行应用服务器。
-- 8222（监控）只映射到本机。
+在云平台安全组中只放行应用服务器访问 4222。
 
 日志写入 systemd 日志（journald），用 `sudo docker compose logs nats` 或 `journalctl -t nats` 查看，保留多久由 journald 的设置决定。
 
