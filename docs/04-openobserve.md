@@ -53,7 +53,7 @@ NATS 的指标按名称各成一个 stream。在 Dashboards → Import 中导入
 
 | 指标或日志 | 条件 |
 |---|---|
-| `jetstream_consumer_num_pending` | 持续增长（按 `account_name`、`consumer_name` 区分产品和 topic） |
+| `jetstream_consumer_num_pending` | 持续增长（按 `account_name`、`consumer_name` 区分账号和 topic） |
 | `jetstream_server_total_message_bytes` | 超过 `jetstream_server_max_storage` 的 80% |
 | `gnatsd_healthz_status_value` | 不为 0，或停止上报 |
 | `system.memory.utilization` | 超过 80%（定时消息占用内存，见 [机器](../README.md#机器)） |
