@@ -228,7 +228,7 @@ nats --context a consumer resume jobs mail_send
 
 ## 监控
 
-tenon 应用的指标由应用直接上报：`queue.relay.active` 所有实例之和为 0 时告警，另外关注 `queue.relay.lag` 和队列面板。
+tenon 的队列指标由应用直接上报。接入应用指标后，可按项目对 `queue.relay.active` 的实例总和持续为 0 设置告警，并关注 `queue.relay.lag` 和队列面板。可为指标停止上报另设告警。
 
 NATS 和主机按 [OpenObserve 的 NATS 接入文档](https://openobserve.ai/docs/integration/message-brokers/nats/) 接入：在服务器上安装 OpenObserve 的 agent（systemd 服务 `otel-collector`），它默认采集主机指标、journald（其中有 NATS 的日志）和 `/var/log`，再让它抓取 `prometheus-nats-exporter`（`127.0.0.1:7777`）给出的 NATS 指标。
 
@@ -275,16 +275,40 @@ curl -fsS http://127.0.0.1:7777/metrics | grep '^gnatsd_connz_idle{'
 
 查到样本后，等 agent 下一轮抓取，再刷新看板。验证结束后按 `Ctrl+C` 断开测试订阅。
 
-告警：
+### 告警
 
-| OpenObserve 中的 stream | 条件 |
+自部署 OpenObserve 的 `default` 文件夹中已启用以下两条 NATS 告警。两条规则均选择指标流 `gnatsd_healthz_status_value`，每 1 分钟评估一次，查询周期为 1 分钟，至少一条时间序列的查询结果 ≥ 1 时满足触发条件。部署到其他主机时，按实际采集标签修改 `host_name` 和 `service_name`。
+
+| 告警规则 | 触发条件 |
 |---|---|
-| `jetstream_consumer_num_pending` | 持续增长（按 `account_name`、`consumer_name` 区分账号和 topic） |
-| `jetstream_server_total_message_bytes` | 超过 `jetstream_server_max_storage` 的 80% |
-| `gnatsd_healthz_status_value` | 为 0，或停止上报 |
-| `system_memory_utilization` | `state` 为 `used` 的值大于 0.8（定时消息占用内存） |
-| `system_filesystem_utilization` | 数据盘所在 `mountpoint` 的值大于 0.8 |
-| `journald`（日志） | `body_syslog_identifier` 为 `nats`，且 `body_message` 含 `[ERR]` |
+| `nats_health_check_failed` | NATS 健康指标为 `0`，持续 1 分钟。健康时指标为 `1`。 |
+| `nats_metrics_interrupted` | 最近 1 分钟有抓取样本且全部失败（`up=0`），或连续 3 分钟没有收到 NATS 健康指标。满足任一条件即告警，无额外等待。 |
+
+`nats_health_check_failed` 的 PromQL
+
+```promql
+1 - min by (host_name) (gnatsd_healthz_status_value{host_name="nats"})
+```
+
+`nats_metrics_interrupted` 的 PromQL
+
+```promql
+(1 + (max by (host_name) (max_over_time(up{host_name="nats",service_name="nats"}[1m])) == 0))
+or on (host_name)
+absent_over_time(gnatsd_healthz_status_value{host_name="nats"}[3m])
+```
+
+两条规则共用 `telegram-host-warning`，重复通知的静默时间为 15 分钟。条件解除后继续保持告警状态 2 分钟，恢复通知发往 `telegram-host-recovery`。
+
+CPU、内存和磁盘沿用通用主机告警。CPU 使用率 ≥ 80%，内存使用率（`state="used"`）≥ 75%。当前 `/var/lib/nats` 位于根分区 `/`，磁盘沿用通用的 **70%** 告警，即 `system_filesystem_utilization{mountpoint="/"}` 换算成百分比后达到或超过 70%。如果日后把 JetStream 数据移到独立挂载点，需给该挂载点配置磁盘告警。
+
+以下是业务需要时可补充的告警，配置前先确认对应指标或日志已经入库。
+
+| 监控项 | 条件 |
+|---|---|
+| JetStream 消费积压 | 对 `jetstream_consumer_num_pending` 按 `account_name`、`stream_name`、`consumer_name` 区分，按业务可接受的积压量和持续时间设置阈值。 |
+| JetStream 存储配额 | 按 `host_name`、`server_id` 匹配，用 `gnatsd_varz_jetstream_stats_storage` 除以 `gnatsd_varz_jetstream_config_max_storage`。仅在配额大于 0 时计算，可在使用率达到 80% 时预警。 |
+| NATS 错误日志 | 在 `journald` 中筛选 NATS 主机，按 `body__systemd_unit` 为 `nats-server.service` 或 `body_syslog_identifier` 为 `nats` 识别服务，再匹配 `body_message` 中的 `[ERR]`。 |
 
 ## 迁移
 
