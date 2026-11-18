@@ -1,2 +1,5 @@
-*.creds
-resolver.conf
+config/accounts.conf
+.env
+data/
+cli/
+backup/

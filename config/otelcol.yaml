@@ -1,0 +1,26 @@
+# 采集 prometheus-nats-exporter 的指标，推送到 OpenObserve。地址和令牌在 .env 中，见 docs/04-openobserve.md
+receivers:
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: nats
+          scrape_interval: 30s
+          static_configs:
+            - targets: ["exporter:7777"]
+
+processors:
+  batch:
+    timeout: 5s
+
+exporters:
+  otlphttp/openobserve:
+    endpoint: ${env:OPENOBSERVE_ENDPOINT}
+    headers:
+      Authorization: Basic ${env:OPENOBSERVE_TOKEN}
+
+service:
+  pipelines:
+    metrics:
+      receivers: [prometheus]
+      processors: [batch]
+      exporters: [otlphttp/openobserve]
