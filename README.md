@@ -270,7 +270,7 @@ curl -fsS http://127.0.0.1:7777/metrics | grep '^gnatsd_connz_idle{'
 
 ### 告警
 
-自部署 OpenObserve 的 `default` 文件夹中已启用以下两条 NATS 告警。两条规则均选择指标流 `gnatsd_healthz_status_value`，每 1 分钟评估一次，查询周期为 1 分钟，至少一条时间序列的查询结果 ≥ 1 时满足触发条件。部署到其他主机时，按实际采集标签修改 `host_name` 和 `service_name`。
+在 OpenObserve 中可按以下示例设置两条定时 PromQL 告警。两条规则均选择指标流 `gnatsd_healthz_status_value`，每 1 分钟评估一次，查询周期为 1 分钟，至少一条时间序列的查询结果 ≥ 1 时满足触发条件。将 `<NATS_HOSTNAME>` 替换为实际采集的 `host_name`。示例中的 `service_name="nats"` 对应上文的采集任务名，配置后请核对 `up` 指标上的标签值。
 
 | 告警规则 | 触发条件 |
 |---|---|
@@ -280,20 +280,20 @@ curl -fsS http://127.0.0.1:7777/metrics | grep '^gnatsd_connz_idle{'
 `nats_health_check_failed` 的 PromQL
 
 ```promql
-1 - min by (host_name) (gnatsd_healthz_status_value{host_name="nats"})
+1 - min by (host_name) (gnatsd_healthz_status_value{host_name="<NATS_HOSTNAME>"})
 ```
 
 `nats_metrics_interrupted` 的 PromQL
 
 ```promql
-(1 + (max by (host_name) (max_over_time(up{host_name="nats",service_name="nats"}[1m])) == 0))
+(1 + (max by (host_name) (max_over_time(up{host_name="<NATS_HOSTNAME>",service_name="nats"}[1m])) == 0))
 or on (host_name)
-absent_over_time(gnatsd_healthz_status_value{host_name="nats"}[3m])
+absent_over_time(gnatsd_healthz_status_value{host_name="<NATS_HOSTNAME>"}[3m])
 ```
 
-按实际部署选择告警和恢复通知渠道。两条规则的重复通知静默时间为 15 分钟，条件解除后继续保持告警状态 2 分钟，再发送恢复通知。
+按部署环境配置通知渠道、重复通知间隔和恢复通知。
 
-CPU、内存和磁盘沿用通用主机告警。CPU 使用率 ≥ 80%，内存使用率（`state="used"`）≥ 75%。当前 `/var/lib/nats` 位于根分区 `/`，磁盘沿用通用的 **70%** 告警，即 `system_filesystem_utilization{mountpoint="/"}` 换算成百分比后达到或超过 70%。如果日后把 JetStream 数据移到独立挂载点，需给该挂载点配置磁盘告警。
+CPU、内存和磁盘沿用部署环境已有的主机告警。磁盘告警应覆盖 JetStream 数据目录所在的挂载点。按本文部署且 `/var/lib/nats` 位于根分区时，由根分区 `/` 的磁盘告警覆盖。
 
 以下是业务需要时可补充的告警，配置前先确认对应指标或日志已经入库。
 
