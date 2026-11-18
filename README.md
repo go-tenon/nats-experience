@@ -1,10 +1,10 @@
 # NATS 部署与运维
 
-多项目共用的单机 NATS（JetStream），供 tenon 的队列、广播、实时频道和 RPC 使用。用 Docker Compose 运行，只有 `compose.yaml`、`config/nats.conf` 和 `Makefile` 三个文件；每个项目一个账号（account），账号和密码写在 `nats.conf` 中，增删账号不用重启；某个项目流量变大后迁到单独的 NATS。
+多项目共用的单机 NATS（JetStream），供 tenon 的队列、广播、实时频道和 RPC 使用。用 Docker Compose 运行，只有 `compose.yaml`、`config/nats.conf` 和 `Makefile` 三个文件；每个项目一个账号（account），账号和密码写在 `nats.conf` 中，增删账号热加载生效；某个项目流量变大后迁到单独的 NATS。
 
 ## 机器
 
-Ubuntu x86_64，装好 Docker、Docker Compose 和 make。2 核 2G 起，ESSD 并开启每天自动快照，与应用服务器在同一 VPC：连接不加密，不能走公网。
+Ubuntu x86_64，装好 Docker、Docker Compose 和 make。2 核 2G 起，ESSD 并开启每天自动快照，与应用服务器在同一 VPC，连接走内网明文传输。
 
 - CPU：2 核 2G 上 NATS 每秒处理上万条消息，CPU 不到 1 核。
 - 内存：随积压和定时消息增长。消息内容存在磁盘上，内存是每条定时消息的索引和到期计时，每条约 0.75KB。tenon 的延迟任务和重试全部是定时消息，一直留在 NATS 中直到执行，100 万条约 750MB；应用会大量安排远期任务时，按条数预留内存。
@@ -14,7 +14,7 @@ Ubuntu x86_64，装好 Docker、Docker Compose 和 make。2 核 2G 起，ESSD �
 
 | 情况 | 影响 |
 |---|---|
-| 进程崩溃、重启、升级 | 不丢任务。任务暂停处理，发布不受影响；广播、实时频道和 RPC 中断，客户端自动重连 |
+| 进程崩溃、重启、升级 | 任务保留：处理暂停，发布照常；广播、实时频道和 RPC 中断，客户端自动重连 |
 | 断电、宕机 | 丢最近约 1 秒写入的任务 |
 | 磁盘损坏 | 丢 NATS 中未处理的任务，包括全部延迟任务和重试；只能从磁盘快照恢复到快照时的状态 |
 
@@ -40,7 +40,7 @@ services:
       - "4222:4222"           # 客户端，访问来源由云平台安全组控制
       - "127.0.0.1:8222:8222" # 监控，只给本机
     volumes:
-      - ./config:/etc/nats:ro # 挂载目录而不是单个文件：编辑器换掉文件后，重新加载也能读到新内容
+      - ./config:/etc/nats:ro # 挂载目录：编辑器保存 nats.conf 后，重新加载读到新内容
       - ./data:/data          # JetStream 的数据
     environment:
       GOMEMLIMIT: 1200MiB     # 内存的 60–80%
@@ -82,8 +82,8 @@ services:
 把账号名 `A`、用户名 `a` 换成实际的名字，每个 `<密码>` 换成 `openssl rand -hex 24` 生成的不同的随机串：
 
 ```
-# 修改后执行 make reload。server_name、listen、http 和 jetstream 段不能热加载，
-# 其中 max_file_store、max_memory_store 可以调大
+# 修改后执行 make reload。修改 server_name、listen、http 或 jetstream 段
+# （调大 max_file_store、max_memory_store 除外）后，重建 nats 容器
 server_name: nats-1
 
 listen: 0.0.0.0:4222
@@ -92,9 +92,9 @@ http: 0.0.0.0:8222
 
 jetstream {
   store_dir: /data
-  # 每秒同步磁盘，吞吐下降 5–10%；always 在普通云盘上约 450 条/秒，不用
+  # 每秒同步磁盘，吞吐下降 5–10%
   sync_interval: "1s"
-  # 所有账号合计的磁盘上限，小于数据盘的可用空间；账号不设配额
+  # 所有账号共用的磁盘上限，小于数据盘的可用空间
   max_file_store: 30GB
   # 实时频道的在线成员使用内存存储
   max_memory_store: 256MB
@@ -112,7 +112,7 @@ accounts {
   }
 
   A {
-    # 开启 JetStream，不限额；不写时关闭
+    # 开启 JetStream，用量计入共用的上限
     jetstream: enabled
     users = [
       { user: a, password: "<密码>" }
@@ -126,17 +126,17 @@ accounts {
 ### Makefile
 
 ```makefile
-# 命令行以 > 开头，不依赖 Tab
+# 命令行以 > 开头
 .RECIPEPREFIX = >
 .PHONY: reload
 
-# 检查 config/nats.conf 的语法，通过后让 NATS 重新加载：不重启，已有连接不断开
+# 检查 config/nats.conf 的语法，通过后让 NATS 重新加载，已有连接保持
 reload:
 > sudo docker compose exec nats nats-server -t -c /etc/nats/nats.conf
-# 只发送 HUP 信号，容器不会停止；输出中的 Killed 表示信号已送达
+# 发送 HUP 信号，输出中的 Killed 表示信号已送达
 > sudo docker compose kill -s HUP nats
 > sleep 1
-# 成功时最后一行是 Reloaded server configuration；出现 not supported 时这次修改整个没有生效
+# 成功时最后一行是 Reloaded server configuration；出现 not supported 时重建 nats 容器使修改生效
 > sudo docker compose logs --tail 3 nats
 ```
 
@@ -156,11 +156,11 @@ nats:
   url: nats://a:<密码>@<NATS 地址>:4222
 ```
 
-下文假设 `queue.stream` 是默认的 `jobs`。`jobs.>` 只给队列用。不要给 `jobs` stream 设置 `max_age`，容量上限配合 `discard: new`：否则会删掉还没执行的延迟任务，worker 发现时拒绝启动。
+下文假设 `queue.stream` 是默认的 `jobs`。`jobs.>` 只给队列用。`jobs` stream 的 `max_age` 保持为 0，容量上限配合 `discard: new`，延迟任务才能一直保留到执行；worker 启动时检查这两项。
 
 ## 命令行
 
-`nats` 是 NATS 官方的命令行工具，用来查看和操作 NATS：看某个账号的 stream 和积压、暂停 topic、迁移时备份和恢复，以及查看整台服务器的状态。它在 `cli` 容器中运行，不用安装。
+`nats` 是 NATS 官方的命令行工具，用来查看和操作 NATS：看某个账号的 stream 和积压、暂停 topic、迁移时备份和恢复，以及查看整台服务器的状态。它在 `cli` 容器中运行。
 
 1. 在 `nats` 目录中设置别名，之后在任何目录都能直接输入 `nats`：
 
@@ -205,7 +205,7 @@ nats:
 
 ### 删除账号
 
-1. 停掉使用这个账号的应用，否则重启的 worker 会重新建出 stream。
+1. 停掉使用这个账号的应用（worker 启动时会建 stream）。
 2. 逐个删除账号中的 stream：
 
    ```bash
@@ -213,7 +213,7 @@ nats:
    nats --context c stream rm jobs -f
    ```
 
-3. 从 `config/nats.conf` 中删掉这个账号，以及其他账号中导入它的 `imports`（否则语法检查报错），`make reload`。
+3. 从 `config/nats.conf` 中删掉这个账号，以及其他账号中导入它的 `imports`（语法检查要求导入的账号存在），`make reload`。
 4. 删除它的数据目录和 context：
 
    ```bash
@@ -237,7 +237,7 @@ nats --context a consumer pause jobs mail_send 1h
 nats --context a consumer resume jobs mail_send
 ```
 
-修改 `compose.yaml` 后执行 `sudo docker compose up -d --wait`；修改了 `nats.conf` 中不能热加载的设置后执行 `sudo docker compose up -d --wait --force-recreate nats`。
+修改 `compose.yaml` 后执行 `sudo docker compose up -d --wait`；修改了 `nats.conf` 开头注释中列出的设置后执行 `sudo docker compose up -d --wait --force-recreate nats`。
 
 升级：磁盘快照 → 修改 `compose.yaml` 中的镜像版本 → `sudo docker compose up -d --wait`。
 
@@ -311,7 +311,7 @@ worker 停止期间发布照常进行，新任务留在 PostgreSQL 中，worker 
 
 ## 跨账号 RPC
 
-账号 B、C 中的应用调用账号 A 中的 natsrpc 端点，以 A 的前缀 `a.v1` 为例。NATS 的导出、导入决定请求能否送到 A；能否调用由 natsrpc 的端点权限决定，调用方仍需 A 签发的 API token（`natsrpc.Token`）。
+账号 B、C 中的应用调用账号 A 中的 natsrpc 端点，以 A 的前缀 `a.v1` 为例。NATS 的导出、导入决定请求能否送到 A；能否调用由 natsrpc 的端点权限决定，调用时带上 A 签发的 API token（`natsrpc.Token`）。
 
 ### 同一台 NATS：导出和导入
 
@@ -331,7 +331,7 @@ B 中加：
     ]
 ```
 
-调用方用自己的连接调用，代码不变；未导出的 subject 返回 `natsrpc.ErrNoResponders`：
+调用方用自己的连接调用；未导出的 subject 返回 `natsrpc.ErrNoResponders`：
 
 ```go
 out, err := natsrpc.Call[ArticleDTO](ctx, nc, "a.v1.articles.get", in, natsrpc.Token(token))
@@ -351,9 +351,9 @@ A 迁到单独的 NATS 后，导入失效。在 A 的 NATS 上，A 的 `users` �
       }
 ```
 
-这个用户只能向 `a.v1.>` 发请求、在 `_INBOX_b.>` 收回复，A 的其他 subject 和 JetStream 都被拒绝。每个调用方的收件箱前缀专用且各不相同（C 用 `rpc_c` 和 `_INBOX_c`）；允许订阅 `_INBOX.>` 或共用前缀时，调用方能收到 A 账号内其他请求的回复。
+这个用户只能向 `a.v1.>` 发请求、在 `_INBOX_b.>` 收回复，A 的其他 subject 和 JetStream 都被拒绝。每个调用方使用专用的收件箱前缀（C 用 `rpc_c` 和 `_INBOX_c`），只收到自己请求的回复。
 
-调用方另建一条连接。`natsx.Connect` 不能设置收件箱前缀，这条连接直接用 nats.go 建立：
+调用方另建一条连接，用 nats.go 建立，以便设置收件箱前缀：
 
 ```go
 nca, err := nats.Connect("nats://rpc_b:<密码>@<A 的地址>:4222",
