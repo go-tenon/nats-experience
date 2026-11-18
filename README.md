@@ -1,10 +1,10 @@
 # NATS 部署与运维
 
-多项目共用的单机 NATS（JetStream），供 tenon 的队列、广播、实时频道和 RPC 使用。用 Docker Compose 运行，只有 `compose.yaml` 和 `config/nats.conf` 两个文件；每个项目一个账号（account），账号和密码写在 `nats.conf` 中，增删账号不用重启；某个项目流量变大后迁到单独的 NATS。
+多项目共用的单机 NATS（JetStream），供 tenon 的队列、广播、实时频道和 RPC 使用。用 Docker Compose 运行，只有 `compose.yaml`、`config/nats.conf` 和 `Makefile` 三个文件；每个项目一个账号（account），账号和密码写在 `nats.conf` 中，增删账号不用重启；某个项目流量变大后迁到单独的 NATS。
 
 ## 机器
 
-Ubuntu x86_64，装好 Docker 和 Docker Compose。2 核 2G 起，ESSD 并开启自动快照，与应用服务器同一地域（优先同一 VPC）。
+Ubuntu x86_64，装好 Docker、Docker Compose 和 make。2 核 2G 起，ESSD 并开启自动快照，与应用服务器同一地域（优先同一 VPC）。
 
 - CPU：2 核 2G 上 NATS 每秒处理上万条消息，CPU 不到 1 核。
 - 内存：随积压和定时消息增长。消息内容存在磁盘上，内存是每条定时消息的索引和到期计时，每条约 0.75KB。tenon 的延迟任务和重试全部是定时消息，一直留在 NATS 中直到执行，100 万条约 750MB；应用会大量安排远期任务时，按条数预留内存。
@@ -90,7 +90,7 @@ services:
 把账号名 `A`、用户名 `a` 换成实际的名字，每个 `<密码>` 换成 `openssl rand -hex 24` 生成的不同的随机串：
 
 ```
-# 修改后执行 docker compose kill -s HUP nats 重新加载，不中断连接；server_name 不能热加载
+# 修改后执行 make reload 重新加载，不中断连接；server_name 不能热加载
 server_name: nats-1
 
 listen: 0.0.0.0:4222
@@ -128,6 +128,23 @@ accounts {
 ```
 
 需要更多账号时照着加一段，见 [01 账号](docs/01-accounts.md)。文件中有密码，保存后执行 `chmod 600 config/nats.conf`。
+
+### Makefile
+
+`make reload` 在修改 `config/nats.conf` 后重新加载。`.RECIPEPREFIX` 让命令行以 `>` 开头，复制粘贴时 Tab 变成空格也不影响。
+
+```makefile
+.RECIPEPREFIX = >
+.PHONY: reload
+
+# 检查 config/nats.conf 的语法，通过后让 NATS 重新加载：不重启，已有连接不断开
+reload:
+> sudo docker compose exec nats nats-server -t -c /etc/nats/nats.conf
+# 只发送 HUP 信号，容器不会停止；输出中的 Killed 表示信号已送达
+> sudo docker compose kill -s HUP nats
+> sleep 1
+> sudo docker compose logs --tail 3 nats
+```
 
 ### 启动
 

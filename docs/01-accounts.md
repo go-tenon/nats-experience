@@ -2,15 +2,9 @@
 
 每个项目一个账号。账号之间 subject、stream、凭据隔离；磁盘、CPU、IO 共用，某个账号影响其他账号时按 [03 迁移](03-migration.md) 迁出。同一项目的测试和正式环境用两个账号。
 
-命令都在 `nats` 目录中执行。账号和用户都写在 `config/nats.conf` 的 `accounts` 中。修改后检查语法，再通知 NATS 重新加载：
+命令都在 `nats` 目录中执行。账号和用户都写在 `config/nats.conf` 的 `accounts` 中，修改后执行 `make reload` 重新加载：先检查语法，通过后通知 NATS 重新读取配置，最后显示日志，其中有 `Reloaded: accounts`。
 
-```bash
-sudo docker compose exec nats nats-server -t -c /etc/nats/nats.conf   # configuration file ... is valid
-sudo docker compose kill -s HUP nats
-sudo docker compose logs --tail 3 nats                               # Reloaded: accounts
-```
-
-重新加载不重启服务器，已有的连接不断开。配置有错时，日志中出现 `Failed to reload server configuration`，服务器继续使用原来的配置。
+重新加载不重启服务器，已有的连接不断开。语法有错时 `make reload` 在检查这一步停下，不通知 NATS。
 
 ## 新增账号
 

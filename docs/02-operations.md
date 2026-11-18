@@ -41,13 +41,7 @@ tenon 队列面板也可以暂停和恢复。
 
 ## 修改配置
 
-`config/nats.conf` 修改后检查语法，再重新加载，不中断连接：
-
-```bash
-sudo docker compose exec nats nats-server -t -c /etc/nats/nats.conf
-sudo docker compose kill -s HUP nats
-sudo docker compose logs --tail 3 nats
-```
+`config/nats.conf` 修改后执行 `make reload`：检查语法，通过后重新加载，不中断连接。
 
 `server_name` 和监听地址不能热加载，修改后执行 `sudo docker compose up -d --force-recreate nats`。`compose.yaml` 修改后执行 `sudo docker compose up -d`。
 
@@ -57,7 +51,7 @@ sudo docker compose logs --tail 3 nats
 
 ## 备份
 
-- 磁盘自动快照，每天一次，包括 `data/` 和两个文件。
+- 磁盘自动快照，每天一次，包括 `data/` 和三个文件。
 - `config/nats.conf` 中是所有账号的密码，另外保存到离线或加密存储。
 
 ## 监控
