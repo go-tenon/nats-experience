@@ -49,7 +49,7 @@ sudo docker compose kill -s HUP nats
 sudo docker compose logs --tail 3 nats
 ```
 
-`server_name` 和监听地址不能热加载，修改后执行 `sudo docker compose up -d --force-recreate nats`。`compose.yaml` 修改后执行 `sudo docker compose up -d`。
+`server_name` 和监听地址不能热加载，修改后执行 `sudo docker compose up -d --force-recreate nats`。`compose.yaml` 修改后执行 `sudo docker compose up -d`；只改了末尾 otelcol 的 `configs` 时，见 [04 接入 OpenObserve](04-openobserve.md#配置)。
 
 ## 升级
 
@@ -58,7 +58,7 @@ sudo docker compose logs --tail 3 nats
 ## 备份
 
 - 磁盘自动快照，每天一次，包括 `data/` 和两个文件。
-- `nats.conf` 中是所有产品的密码，另外保存到离线或加密存储。
+- `nats.conf` 中是所有产品的密码，`compose.yaml` 中是 OpenObserve 的令牌，两个文件另外保存到离线或加密存储。
 
 ## 监控
 

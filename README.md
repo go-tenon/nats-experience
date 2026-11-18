@@ -69,7 +69,51 @@ services:
       - ./cli:/nsc/.config/nats # context，含密码
       - ./backup:/work/backup   # 迁移时的备份
     depends_on: [nats]
+
+  # 指标上报 OpenObserve，见 docs/04-openobserve.md
+  exporter:
+    image: natsio/prometheus-nats-exporter:0.20.3
+    command: ["-varz", "-connz", "-healthz", "-accstatz", "-jsz=all", "http://nats:8222"]
+    restart: unless-stopped
+    depends_on: [nats]
+
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.165.0
+    command: ["--config=/etc/otelcol/otelcol.yaml"]
+    restart: unless-stopped
+    configs:
+      - source: otelcol
+        target: /etc/otelcol/otelcol.yaml
+    depends_on: [exporter]
+
+configs:
+  otelcol:
+    content: |
+      receivers:
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: nats
+                scrape_interval: 30s
+                static_configs:
+                  - targets: ["exporter:7777"]
+      processors:
+        batch:
+          timeout: 5s
+      exporters:
+        otlphttp/openobserve:
+          endpoint: https://<OpenObserve 地址>/api/<组织>
+          headers:
+            Authorization: Basic <令牌>
+      service:
+        pipelines:
+          metrics:
+            receivers: [prometheus]
+            processors: [batch]
+            exporters: [otlphttp/openobserve]
 ```
+
+把 `<OpenObserve 地址>`、`<组织>`、`<令牌>` 换成实际的值，见 [04 接入 OpenObserve](docs/04-openobserve.md)。文件中有令牌，保存后执行 `sudo chmod 600 compose.yaml`。
 
 ### nats.conf
 

@@ -1,77 +1,27 @@
 # 04 接入 OpenObserve
 
-参照 [OpenObserve 的 NATS 集成文档](https://openobserve.ai/docs/integration/message-brokers/nats/)：prometheus-nats-exporter 读取 NATS 的监控端口，OpenTelemetry Collector 采集它的指标，推送到 OpenObserve。tenon 应用的指标由应用直接上报。
+参照 [OpenObserve 的 NATS 集成文档](https://openobserve.ai/docs/integration/message-brokers/nats/)：`compose.yaml` 中的 `exporter`（prometheus-nats-exporter）读取 NATS 的监控端口，`otelcol`（OpenTelemetry Collector）采集它的指标，推送到 OpenObserve。tenon 应用的指标由应用直接上报。
 
-命令都在 `/opt/nats` 中执行。
+## 配置
 
-## 采集配置
+otelcol 的采集配置写在 `compose.yaml` 末尾的 `configs.otelcol` 中，要填两处：
 
-`sudo vim otelcol.yaml`，填上 OpenObserve 的地址和令牌：
+- `endpoint`：`https://<OpenObserve 地址>/api/<组织>`。
+- `Authorization`：`Basic` 加 OpenObserve 中 Data sources → Custom → Logs → OTEL Collector 给出的令牌。
 
-```yaml
-receivers:
-  prometheus:
-    config:
-      scrape_configs:
-        - job_name: nats
-          scrape_interval: 30s
-          static_configs:
-            - targets: ["exporter:7777"]
-
-processors:
-  batch:
-    timeout: 5s
-
-exporters:
-  otlphttp/openobserve:
-    endpoint: https://<OpenObserve 地址>/api/<组织>
-    headers:
-      Authorization: Basic <令牌>
-
-service:
-  pipelines:
-    metrics:
-      receivers: [prometheus]
-      processors: [batch]
-      exporters: [otlphttp/openobserve]
-```
-
-文件中有令牌，保存后只给 otelcol 容器的用户（10001）读取：
+修改后重建 otelcol：只改 `configs` 的内容时，`docker compose up -d` 不会重建容器，要加 `--force-recreate`。
 
 ```bash
-sudo chown 10001:10001 otelcol.yaml && sudo chmod 600 otelcol.yaml
-```
-
-`<令牌>` 是 OpenObserve 中 Data sources → Custom → Logs → OTEL Collector 给出的 `Basic` 后面的部分。
-
-## 启动
-
-用 `sudo vim compose.yaml` 在 `services` 中加上两个服务：
-
-```yaml
-  exporter:
-    image: natsio/prometheus-nats-exporter:0.20.3
-    command: ["-varz", "-connz", "-healthz", "-accstatz", "-jsz=all", "http://nats:8222"]
-    restart: unless-stopped
-    depends_on: [nats]
-
-  otelcol:
-    image: otel/opentelemetry-collector-contrib:0.165.0
-    command: ["--config=/etc/otelcol/otelcol.yaml"]
-    restart: unless-stopped
-    volumes:
-      - ./otelcol.yaml:/etc/otelcol/otelcol.yaml:ro
-    depends_on: [exporter]
-```
-
-```bash
-sudo docker compose up -d
+cd /opt/nats
+sudo docker compose up -d --force-recreate otelcol
 sudo docker compose logs --tail 20 otelcol          # Everything is ready
 ```
 
-指标按名称各成一个 stream。在 Dashboards → Import 中导入官方看板 [nats_dashboard.json](https://openobserve-prod-website.s3.us-west-2.amazonaws.com/assets/nats_dashboard_c317f090bb.json)。NATS 的日志不上报，用 `sudo docker compose logs nats` 查看。
+不接入 OpenObserve 时，从 `compose.yaml` 中删掉 `exporter`、`otelcol` 两个服务和末尾的 `configs`。
 
-修改 `otelcol.yaml` 后执行 `sudo docker compose up -d --force-recreate otelcol`：容器挂载的是单个文件，vim 保存后要重建容器才能读到新内容。
+## 看板
+
+指标按名称各成一个 stream。在 Dashboards → Import 中导入官方看板 [nats_dashboard.json](https://openobserve-prod-website.s3.us-west-2.amazonaws.com/assets/nats_dashboard_c317f090bb.json)。NATS 的日志不上报，用 `sudo docker compose logs nats` 查看。
 
 ## 告警
 
