@@ -41,7 +41,7 @@ tenon 队列面板也可以暂停和恢复。
 
 ## 修改配置
 
-`config/nats.conf` 修改后执行 `make reload`：检查语法，通过后重新加载，不中断连接。
+`config/nats.conf` 修改后执行 `make reload`。
 
 `server_name` 和监听地址不能热加载，修改后执行 `sudo docker compose up -d --force-recreate nats`。`compose.yaml` 修改后执行 `sudo docker compose up -d`。
 

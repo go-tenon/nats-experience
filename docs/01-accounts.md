@@ -2,40 +2,13 @@
 
 每个项目一个账号。账号之间 subject、stream、凭据隔离；磁盘、CPU、IO 共用，某个账号影响其他账号时按 [03 迁移](03-migration.md) 迁出。同一项目的测试和正式环境用两个账号。
 
-命令都在 `nats` 目录中执行。账号和用户都写在 `config/nats.conf` 的 `accounts` 中，修改后执行 `make reload` 重新加载：先检查语法，通过后通知 NATS 重新读取配置，最后显示日志，其中有 `Reloaded: accounts`。
-
-重新加载不重启服务器，已有的连接不断开。语法有错时 `make reload` 在检查这一步停下，不通知 NATS。
-
-## 新增账号
-
-在 `accounts` 中加一段，密码用 `openssl rand -hex 24` 生成：
-
-```
-  C {
-    jetstream: enabled
-    users = [
-      { user: c, password: "<密码>" }
-    ]
-  }
-```
-
-- `jetstream: enabled` 开启 JetStream，不限额；不写时关闭。
-- 用户名在所有账号中唯一。
-
-重新加载后，应用按 [应用配置](../README.md#应用配置) 连接。
+账号和用户的写法见 README 中的 [config/nats.conf](../README.md#confignatsconf)，修改后执行 `make reload`。命令都在 `nats` 目录中执行。
 
 ## 用户
 
-一个账号下的多个应用各用一个用户，便于单独吊销：
+一个账号下的多个应用各用一个用户，便于单独吊销。
 
-```
-    users = [
-      { user: a, password: "<密码>" }
-      { user: a_worker, password: "<密码>" }
-    ]
-```
-
-吊销（凭据泄露、停用）：删掉这个用户，重新加载。使用它的连接立即断开，重连被拒绝。换密码同理：改密码、重新加载，再更新应用的配置。
+吊销（凭据泄露、停用）：删掉这个用户，`make reload`。使用它的连接立即断开，重连被拒绝。换密码同理：改密码、`make reload`，再更新应用的配置。
 
 ## 删除账号
 
@@ -44,7 +17,7 @@ nats --context c stream ls                    # 逐个删除，例如：
 nats --context c stream rm jobs -f
 ```
 
-从 `config/nats.conf` 中删掉这一段，重新加载，然后删除它的数据目录和 context：
+从 `config/nats.conf` 中删掉这个账号，`make reload`，然后删除它的数据目录和 context：
 
 ```bash
 sudo rm -rf data/jetstream/C

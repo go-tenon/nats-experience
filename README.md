@@ -119,6 +119,7 @@ accounts {
   }
 
   A {
+    # 开启 JetStream，不限额；不写时关闭
     jetstream: enabled
     users = [
       { user: a, password: "<密码>" }
@@ -127,13 +128,12 @@ accounts {
 }
 ```
 
-需要更多账号时照着加一段，见 [01 账号](docs/01-accounts.md)。文件中有密码，保存后执行 `chmod 600 config/nats.conf`。
+需要更多账号时照着 `A` 加一段。文件中有密码，保存后执行 `chmod 600 config/nats.conf`。
 
 ### Makefile
 
-`make reload` 在修改 `config/nats.conf` 后重新加载。`.RECIPEPREFIX` 让命令行以 `>` 开头，复制粘贴时 Tab 变成空格也不影响。
-
 ```makefile
+# 命令行以 > 开头：复制粘贴时 Tab 变成空格也不影响
 .RECIPEPREFIX = >
 .PHONY: reload
 
@@ -170,7 +170,7 @@ nats:
 
 ## 文档
 
-- [01 账号](docs/01-accounts.md)：新增账号、用户，吊销，删除账号
+- [01 账号](docs/01-accounts.md)：账号隔离、多个用户与吊销、删除账号
 - [02 运维](docs/02-operations.md)：命令行、状态、修改配置、升级、备份
 - [03 迁移](docs/03-migration.md)：把一个账号迁到单独的 NATS
 - [04 接入 OpenObserve](docs/04-openobserve.md)

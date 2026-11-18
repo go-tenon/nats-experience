@@ -6,24 +6,22 @@ NATS 的导出、导入决定请求能否送到 A；natsrpc 的 token 和端点�
 
 ## 同一台 NATS：导出和导入
 
-在 `config/nats.conf` 的 `accounts` 中，A 导出一次，每个调用方导入，然后[重新加载](02-operations.md#修改配置)：
+在 `config/nats.conf` 中，A 导出一次，每个调用方导入，然后 `make reload`。
+
+在 A 中加：
 
 ```
-  A {
-    jetstream: enabled
-    users = [ ... ]
     exports = [
       { service: "a.v1.>" }
     ]
-  }
+```
 
-  B {
-    jetstream: enabled
-    users = [ ... ]
+在 B 中加：
+
+```
     imports = [
       { service: { account: A, subject: "a.v1.>" } }
     ]
-  }
 ```
 
 调用方用自己的连接调用，代码不变：
@@ -33,16 +31,14 @@ out, err := natsrpc.Call[ArticleDTO](ctx, nc, "a.v1.articles.get", in, natsrpc.T
 ```
 
 - 未导出的 subject，调用时返回 `natsrpc.ErrNoResponders`。
-- 取消：删掉调用方的 `imports` 中的这一项，重新加载。
+- 取消：删掉调用方的 `imports` 中的这一项，`make reload`。
 - 导出和导入只在同一台 NATS 内有效。
 
 ## 不同的 NATS：调用方直连 A
 
-A 迁到单独的 NATS 后，导入失效。在 A 的 NATS 上，给 A 的账号为每个调用方加一个只能调用 RPC 的用户，重新加载：
+A 迁到单独的 NATS 后，导入失效。在 A 的 NATS 上，在 A 的 `users` 中为每个调用方加一个只能调用 RPC 的用户，然后 `make reload`：
 
 ```
-    users = [
-      { user: a, password: "<密码>" }
       {
         user: rpc_b, password: "<密码>"
         permissions: {
@@ -50,7 +46,6 @@ A 迁到单独的 NATS 后，导入失效。在 A 的 NATS 上，给 A 的账号
           subscribe: "_INBOX_b.>"
         }
       }
-    ]
 ```
 
 每个调用方的收件箱前缀专用且各不相同（C 用 `rpc_c` 和 `_INBOX_c`）。允许订阅 `_INBOX.>` 或共用前缀时，调用方能收到 A 账号内其他请求的回复。
@@ -66,4 +61,4 @@ out, err := natsrpc.Call[ArticleDTO](ctx, nca, "a.v1.articles.get", in, natsrpc.
 
 `natsx.Connect` 不能设置收件箱前缀，这条连接直接用 nats.go 建立。
 
-该用户只能调用 `a.v1.*`；A 的其他 subject、默认 `_INBOX` 前缀、订阅 `_INBOX.>`、A 的 JetStream 均被拒绝。吊销时删掉这个用户，重新加载。
+该用户只能调用 `a.v1.*`；A 的其他 subject、默认 `_INBOX` 前缀、订阅 `_INBOX.>`、A 的 JetStream 均被拒绝。吊销时删掉这个用户，`make reload`。
