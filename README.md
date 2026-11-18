@@ -99,9 +99,9 @@ http: 0.0.0.0:8222
 
 jetstream {
   store_dir: /data
-  # 每秒同步磁盘，断电最多丢约 1 秒的写入
+  # 每秒同步磁盘，断电最多丢约 1 秒的写入，吞吐下降 5–10%；always 在普通云盘上约 450 条/秒，不用
   sync_interval: "1s"
-  # 所有账号合计的磁盘上限
+  # 所有账号合计的磁盘上限，账号不设配额
   max_file_store: 30GB
   # 实时频道的在线成员使用内存存储
   max_memory_store: 256MB
@@ -155,14 +155,6 @@ curl -s '127.0.0.1:8222/healthz?js-enabled-only=true'     # {"status":"ok"}
 
 - 4222 对外监听，在云平台安全组中只放行应用服务器。
 - 8222（监控）只映射到本机。
-
-`config/nats.conf` 中的设置：
-
-| 设置 | 说明 |
-|---|---|
-| `sync_interval: "1s"` | 每秒同步磁盘，吞吐下降 5–10%。`always` 在普通云盘上约 450 条/秒，不用 |
-| `max_file_store: 30GB` | 所有账号合计的磁盘上限。账号不设配额 |
-| `max_memory_store: 256MB` | 实时频道的在线成员使用内存存储 |
 
 日志写入 systemd 日志（journald），用 `sudo docker compose logs nats` 或 `journalctl -t nats` 查看，保留多久由 journald 的设置决定。
 
